@@ -1,0 +1,10 @@
+# Заменить @TODO-* на GitHub-логины участников
+/backend/app/api/          @TODO-backend-1
+/backend/app/schemas/      @TODO-backend-1
+/backend/app/integrations/ @TODO-backend-1
+/backend/app/cache/        @TODO-backend-1
+/backend/app/agent/        @TODO-backend-2
+/frontend/src/api/         @TODO-frontend-1
+/frontend/src/state/       @TODO-frontend-1
+/frontend/src/design/      @TODO-designer
+/design/                   @TODO-designer

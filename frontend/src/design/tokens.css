@@ -1,0 +1,17 @@
+/* Дизайн-токены GoGlobe. Владелец: Дизайнер (значения v0 — заглушки из презентации, заменить на макеты). */
+:root {
+  --c-primary: #2563eb;
+  --c-primary-dark: #1b2f6b;
+  --c-accent: #f59e0b;
+  --c-success: #10a37f;
+  --c-danger: #dc2626;
+  --c-bg: #f6f9ff;
+  --c-surface: #ffffff;
+  --c-text: #0f1b3d;
+  --c-muted: #5b6785;
+  --c-border: #e2e8f5;
+  --radius: 14px;
+  --shadow: 0 2px 10px rgba(20, 40, 100, 0.08);
+  --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+}
