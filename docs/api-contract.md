@@ -1,4 +1,6 @@
-# API-контракт v0
+# API-контракт v0 — исторический мок-API
+
+> Для дальнейшей разработки опубликована [целевая спецификация 0.3](api/README.md): [1_version_api.pdf](api/1_version_api.pdf), OpenAPI и полные моки. Этот файл описывает старый демонстрационный `/api/search`; публикация новой спецификации не изменяет работающий сервер автоматически.
 
 Источник правды: `backend/app/schemas/search.py` (Pydantic). Зеркало: `frontend/src/api/types.ts`. Владелец: Backend №1.
 Живая схема: `GET /openapi.json`, Swagger — `/docs`.
