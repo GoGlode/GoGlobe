@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 import CreditsPage from "./features/credits/CreditsPage";
 import FavoritesPage from "./features/favorites/FavoritesPage";
+import FlightsScreen from "./features/flights/FlightsScreen";
 import HistoryPage from "./features/history/HistoryPage";
 import HomePage from "./features/home/HomePage";
 import ProfilePage from "./features/profile/ProfilePage";
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/flights" element={<FlightsScreen />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </AppShell>
