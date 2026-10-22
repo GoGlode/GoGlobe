@@ -8,11 +8,6 @@ import ItineraryTab from "./tabs/ItineraryTab";
 import MapTab from "./tabs/MapTab";
 import OverviewTab from "./tabs/OverviewTab";
 
-export const TABS = [
-  { id: "overview", label: "Обзор" }, { id: "itinerary", label: "Маршрут" }, { id: "hotels", label: "Отели" },
-  { id: "flights", label: "Перелёты" }, { id: "map", label: "Карта" },
-] as const;
-
 export default function TripPage() {
   const { id, tab = "overview" } = useParams();
   const trip = getTrip(id);

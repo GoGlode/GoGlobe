@@ -3,3 +3,8 @@
 .rating { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--c-muted); }
 .rating__stars { display: inline-flex; gap: 1px; color: var(--c-star); }
 .rating__stars .off { color: #d5dcea; }
+/* Вкладки поездки (Обзор / Маршрут / Отели / Перелёты / Карта) */
+.ttabs { padding: 4px var(--s-4) 8px; gap: 6px; scroll-padding: 0 var(--s-4); }
+.ttab { padding: 9px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 500; background: var(--c-chip); color: var(--c-navy); }
+.ttab.is-on { background: var(--grad-primary); color: #fff; box-shadow: var(--shadow-glow); }
+.tdemo { text-align: center; font-size: 12px; margin-top: 12px; }
