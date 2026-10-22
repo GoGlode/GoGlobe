@@ -1,0 +1,7 @@
+.prof { display: grid; gap: 14px; }
+.prof__me { display: flex; gap: 14px; align-items: center; padding: 16px; border-radius: 24px; } .prof__me img { border-radius: 16px; }
+.prof__me div { display: grid; gap: 2px; } .prof__me b { font-size: 18px; }
+.prof__list { border-radius: 24px; padding: 6px 4px; }
+.prof__row { display: flex; align-items: center; gap: 12px; padding: 14px; color: var(--c-primary); } .prof__row span { flex: 1; color: var(--c-navy); font-weight: 500; }
+.prof__row + .prof__row { border-top: 1px solid var(--c-line); }
+.prof__ver { text-align: center; font-size: 12px; }

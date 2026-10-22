@@ -1,0 +1,13 @@
+.prog { display: grid; gap: 16px; justify-items: center; text-align: center; margin-top: 70px; }
+.prog h1 { font-size: 24px; line-height: 1.2; max-width: 300px; }
+.prog__q { font-size: 14px; max-width: 320px; line-height: 1.4; }
+.prog__globe { position: relative; width: 140px; height: 140px; display: grid; place-items: center; }
+.prog__globe img { border-radius: 30px; box-shadow: var(--shadow-glow); animation: float 2.4s ease-in-out infinite; }
+.prog__globe i { position: absolute; inset: 0; border-radius: 50%; border: 3px solid transparent; border-top-color: var(--c-primary); border-right-color: var(--c-primary-2); animation: spin 1.2s linear infinite; }
+@keyframes float { 50% { transform: translateY(-6px); } }
+.prog__steps { list-style: none; padding: 16px; margin: 8px 0; width: 100%; border-radius: 24px; display: grid; gap: 14px; text-align: left; font-size: 15px; color: var(--c-muted); }
+.prog__steps li { display: flex; align-items: center; gap: 12px; transition: color .2s; } .prog__steps li.done { color: var(--c-navy); } .prog__steps li.now { color: var(--c-navy); font-weight: 600; }
+.prog__ic { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #cfe0f7; display: grid; place-items: center; flex: none; }
+.done .prog__ic { background: var(--c-success); border-color: var(--c-success); color: #fff; }
+.prog__spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #bfdcff; border-top-color: var(--c-primary); animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .prog__globe img, .prog__globe i, .prog__spin { animation: none; } }
