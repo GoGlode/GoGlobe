@@ -1,10 +1,4 @@
-.hist { position: relative; padding: 0 var(--s-4) 16px; display: grid; gap: 12px; }
-.hist__deco { position: absolute; inset: 0 0 auto auto; width: 70%; height: 190px; pointer-events: none; overflow: hidden;
-  background: radial-gradient(160px 160px at 92% 70%, rgba(24, 199, 255, .22), transparent 70%),
-    radial-gradient(220px 120px at 70% 20%, rgba(255, 255, 255, .9), transparent 70%); }
-.hist__trail { position: absolute; right: -20px; top: 66px; width: 62%; height: 2px; transform: rotate(14deg); transform-origin: right;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .95)); }
-.hist__plane { position: absolute; left: 30%; top: 46px; color: var(--c-primary); transform: rotate(10deg); }
+.hist { position: relative; min-height: 100%; padding: 0 var(--s-4) 16px; display: grid; gap: 12px; align-content: start; background: #fff; }
 .hist__top { position: relative; padding-top: 14px; }
 .hist__logo { height: 30px; width: auto; }
 .hist__title { position: relative; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-top: 8px; }

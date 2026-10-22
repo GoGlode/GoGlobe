@@ -67,7 +67,6 @@ export default function HistoryPage() {
 
   return (
     <div className="hist">
-      <div className="hist__deco" aria-hidden="true"><span className="hist__trail" /><Icon name="plane" size={26} className="hist__plane" /></div>
       <header className="hist__top">
         <Link to="/" aria-label="GoGlobe — на главную"><img src="/assets/brand/logo-goglobe.png" alt="GoGlobe" className="hist__logo" /></Link>
       </header>
