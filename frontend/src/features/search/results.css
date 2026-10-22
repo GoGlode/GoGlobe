@@ -18,8 +18,10 @@
 .tcard__body { padding: 16px; margin-top: -26px; position: relative; background: #fff; border-radius: 26px 26px 0 0; display: grid; gap: 12px; }
 .tcard__body h2 { font-size: 21px; line-height: 1.2; }
 .tcard__sum { font-size: 14px; line-height: 1.4; margin-top: 4px; }
-.tcard__tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.tcard__stats { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 6px; }
+.tcard__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tcard__tags .chip { padding: 7px 10px; font-size: 12.5px; gap: 6px; }
+.tcard__stats { display: grid; grid-template-columns: auto auto auto; justify-content: space-between; gap: 6px; }
+.tcard__stats b { white-space: nowrap; }
 .tcard__stats > div { display: flex; align-items: center; gap: 8px; color: var(--c-primary); font-size: 13px; }
 .tcard__stats span { display: grid; color: var(--c-navy); }
 .tcard__stats b { font-weight: 600; font-size: 14px; }
