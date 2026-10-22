@@ -1,0 +1,24 @@
+/* Рамка телефона для показа на компьютере (components/PhoneFrame.tsx) */
+.phone-stage { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 24px; }
+.phone-slot { position: relative; flex: none; }
+.phone { position: absolute; top: 0; left: 0; width: 417px; height: 876px; padding: 12px; border-radius: 68px;
+  transform-origin: top left; background: linear-gradient(145deg, #3a3f4b, #16181d 45%, #2b2f38);
+  box-shadow: 0 0 0 2px #5b616e inset, 0 40px 80px -24px rgba(16, 36, 72, .45), 0 18px 36px -18px rgba(16, 36, 72, .35); }
+.phone::before, .phone::after { content: ""; position: absolute; width: 4px; border-radius: 2px; background: #2b2f38; }
+.phone::before { left: -4px; top: 190px; height: 64px; box-shadow: 0 84px 0 #2b2f38; }
+.phone::after { right: -4px; top: 240px; height: 96px; }
+.phone__screen { position: relative; display: flex; flex-direction: column; width: 393px; height: 852px;
+  border-radius: 56px; overflow: hidden; background: var(--c-bg); }
+.phone__status { position: relative; flex: none; height: 54px; display: flex; align-items: center;
+  justify-content: space-between; padding: 6px 30px 0 46px; color: var(--c-text); font-size: 17px; font-weight: 600; }
+.phone__time { letter-spacing: -0.01em; }
+.phone__island { position: absolute; left: 50%; top: 11px; width: 125px; height: 37px; margin-left: -62.5px;
+  border-radius: 20px; background: #000; }
+.phone__icons { display: inline-flex; gap: 6px; align-items: center; }
+.phone__app { flex: 1; width: 100%; border: 0; display: block; background: var(--c-bg); }
+.phone__home { flex: none; height: 22px; display: grid; place-items: center; }
+.phone__home span { width: 134px; height: 5px; border-radius: 3px; background: #102448; }
+.phone-caption { margin: 0; font-size: 13px; color: var(--c-muted); }
+.phone-caption a { color: var(--c-muted); }
+.phone-caption a:hover { color: var(--c-primary); }

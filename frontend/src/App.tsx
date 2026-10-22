@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import CreditsPage from "./features/credits/CreditsPage";
 import FavoritesPage from "./features/favorites/FavoritesPage";
 import HistoryPage from "./features/history/HistoryPage";
 import HomePage from "./features/home/HomePage";
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/credits" element={<CreditsPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </AppShell>

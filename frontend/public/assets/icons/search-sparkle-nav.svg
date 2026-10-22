@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+<!-- Производная от search-sparkle.svg: лупа + звезда в линзе + одна искра у верхней левой части (как в app-icon-light.png) -->
+<g stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="29" cy="29" r="17.5"/>
+<path d="M42.5 42.5 56 56"/>
+</g>
+<path d="M29 17.5 31.8 24.2 38.5 27 31.8 29.8 29 36.5 26.2 29.8 19.5 27 26.2 24.2Z" fill="currentColor"/>
+<path d="M13 3.5 14.8 8.2 19.5 10 14.8 11.8 13 16.5 11.2 11.8 6.5 10 11.2 8.2Z" fill="currentColor"/>
+</svg>

@@ -5,7 +5,7 @@ import { MaskIcon } from "./Icon";
 const ITEMS = [
   { to: "/profile", icon: "nav-profile", label: "Профиль" },
   { to: "/trips", icon: "nav-calendar", label: "Мои поездки" },
-  { to: "/", icon: "search-sparkle", label: "Поиск", center: true },
+  { to: "/", icon: "search-sparkle-nav", label: "Поиск", center: true },
   { to: "/favorites", icon: "nav-favorites", label: "Избранное" },
   { to: "/history", icon: "nav-history", label: "История" },
 ];
