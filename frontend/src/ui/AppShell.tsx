@@ -4,7 +4,8 @@ import { useLocation } from "react-router-dom";
 import GlassNav from "./GlassNav";
 import "./glassnav.css";
 
-const NO_NAV = [/^\/trip\//, /^\/results/];
+// Без нижней навигации: результаты и «Обзор» поездки (там hero и свой CTA), как в макетах
+const NO_NAV = [/^\/results/, /^\/trip\/[^/]+\/?$/, /^\/trip\/[^/]+\/overview\/?$/];
 
 export default function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
