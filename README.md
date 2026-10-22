@@ -54,12 +54,14 @@ backend/
     agent/          # оркестратор, парсер, tools, валидация,
                     # ранжирование, объяснения                   ← Backend №2
   tests/            # сквозной тест демо-запроса на моках
-frontend/src/
+frontend/src/       # подробно: docs/frontend.md
+  features/         # экраны: home, search, trip(+tabs), trips, favorites, profile, history
+  ui/               # общие компоненты (Icon, GlassNav, AppShell…)
+  data/             # types.ts, демо-данные trips.ts, api.ts (адаптер к backend)
+  state/            # SearchContext, FavoritesContext
   api/              # types.ts (контракт), client.ts              ← Frontend №1
-  state/            # состояние поиска                            ← Frontend №1
-  pages/            # HomePage, ResultsPage, OfferPage
-  components/       # QueryForm, ProgressSteps (FE1); OfferCard, States (FE2)
   design/           # tokens.css, global.css                      ← Дизайнер
+frontend/public/assets/   # brand, icons, images от дизайнера
 design/             # макеты, ассеты, handoff-заметки             ← Дизайнер
 docs/               # контракт, демо-сценарий, роадмап
 ```
@@ -68,8 +70,8 @@ docs/               # контракт, демо-сценарий, роадма�
 
 | Роль | Ветка | Зона |
 |---|---|---|
-| **Frontend №1** | `dev/frontend-1` | каркас WebApp, роутинг, ввод запроса, форма параметров, экран ожидания, ошибки, адаптив, `api/client.ts` |
-| **Frontend №2** | `dev/frontend-2` | карточки результатов, страница деталей, фильтры/сортировка, избранное/шаринг, пустые состояния |
+| **Frontend №1** | `dev/frontend-1` | главная и ввод запроса, экран ожидания, «Перелёты», «Мои поездки», профиль/история, `api/client.ts` (см. docs/frontend.md) |
+| **Frontend №2** | `dev/frontend-2` | результаты (карусель), страница поездки: обзор/маршрут/отели/карта, избранное (см. docs/frontend.md) |
 | **Дизайнер** | `design/*` (по задаче) | макеты ключевых экранов, дизайн-система v0, токены, ассеты, питч-дек |
 | **Backend №1** | `dev/backend-1` | API/BFF, схемы, внешние API и адаптеры, таймауты/повторы, кэш, запасные данные для демо |
 | **Backend №2** | `dev/backend-2` | AI-агент: разбор запроса, оркестрация инструментов, валидация бюджета, ранжирование, объяснения, тесты на демо-запросах |

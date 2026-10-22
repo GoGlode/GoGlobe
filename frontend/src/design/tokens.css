@@ -1,17 +1,36 @@
-/* Дизайн-токены GoGlobe. Владелец: Дизайнер (значения v0 — заглушки из презентации, заменить на макеты). */
+/* Дизайн-токены GoGlobe — сняты с макетов дизайнера (светлый «glass» стиль, синий акцент, navy-текст). */
 :root {
-  --c-primary: #2563eb;
-  --c-primary-dark: #1b2f6b;
-  --c-accent: #f59e0b;
-  --c-success: #10a37f;
-  --c-danger: #dc2626;
-  --c-bg: #f6f9ff;
+  --c-primary: #0787f9;
+  --c-primary-2: #18c7ff;
+  --c-primary-dark: #0668f7;
+  --c-navy: #102448;
+  --c-text: #102448;
+  --c-muted: #6b7a96;
+  --c-bg: #eaf4ff;
+  --c-bg-2: #f8fbff;
   --c-surface: #ffffff;
-  --c-text: #0f1b3d;
-  --c-muted: #5b6785;
-  --c-border: #e2e8f5;
-  --radius: 14px;
-  --shadow: 0 2px 10px rgba(20, 40, 100, 0.08);
-  --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  --c-glass: rgba(255, 255, 255, 0.66);
+  --c-glass-strong: rgba(255, 255, 255, 0.86);
+  --c-border: rgba(255, 255, 255, 0.85);
+  --c-line: #e0ebfa;
+  --c-chip: #eef4fd;
+  --c-success: #12a150;
+  --c-success-bg: #e5f7ec;
+  --c-warn: #f5a524;
+  --c-danger: #e5484d;
+  --c-star: #fbbf24;
+
+  --grad-primary: linear-gradient(135deg, #18c7ff 0%, #0787f9 55%, #0668f7 100%);
+  --grad-page: linear-gradient(180deg, #e3f0ff 0%, #f4f9ff 45%, #ffffff 100%);
+
+  --r-sm: 14px; --r-md: 20px; --r-lg: 28px; --r-xl: 36px; --r-pill: 999px;
+  --shadow-sm: 0 2px 8px rgba(16, 36, 72, 0.06);
+  --shadow-md: 0 8px 24px rgba(30, 90, 180, 0.12);
+  --shadow-glow: 0 8px 22px rgba(7, 135, 249, 0.38);
+  --blur: saturate(160%) blur(18px);
+
+  --font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px;
+  --nav-h: 96px;
+  --app-w: 430px;
 }

@@ -1,0 +1,8 @@
+.glassnav { position: absolute; left: 12px; right: 12px; bottom: 14px; height: 72px; border-radius: 40px; display: flex; align-items: center;
+  justify-content: space-between; padding: 0 10px; z-index: 20; }
+.glassnav__item { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; color: var(--c-navy);
+  background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(255, 255, 255, 0.9); transition: transform .15s; }
+.glassnav__item.is-active:not(.glassnav__item--center) { color: var(--c-primary); background: #fff; }
+.glassnav__item--center { width: 72px; height: 64px; border-radius: 50%; background: var(--grad-primary); color: #fff; border: 0;
+  box-shadow: var(--shadow-glow); }
+.glassnav__item:active { transform: scale(.94); }

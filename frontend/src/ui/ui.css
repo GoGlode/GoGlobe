@@ -1,0 +1,5 @@
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px var(--s-4) 10px; position: sticky; top: 0; z-index: 5; }
+.page-header__title { font-size: 19px; font-weight: 700; text-align: center; flex: 1; }
+.rating { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--c-muted); }
+.rating__stars { display: inline-flex; gap: 1px; color: var(--c-star); }
+.rating__stars .off { color: #d5dcea; }
