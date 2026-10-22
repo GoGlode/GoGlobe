@@ -44,3 +44,4 @@ input::placeholder, textarea::placeholder { color: #8d9bb5; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .fade-up { animation: fade-up .35s ease both; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

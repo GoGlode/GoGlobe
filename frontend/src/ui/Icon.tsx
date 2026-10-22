@@ -38,6 +38,7 @@ const P: Record<string, ReactNode> = {
   suitcase: <><rect x="5.5" y="7.5" width="13" height="13" rx="3" /><path d="M9.5 7.5V5h5v2.5M9 11v6M15 11v6" /></>,
   meal: <path d="M6 3v7a2 2 0 002 2v9M10 3v7M8 3v5M16 21V3c-2 1.5-3 4.5-3 8h3" />,
   search: <><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" /></>,
+  refresh: <><path d="M20 11.5A8 8 0 006.3 6.3L4 8.5" /><path d="M4 4v4.5h4.5M4 12.5a8 8 0 0013.7 5.2L20 15.5" /><path d="M20 20v-4.5h-4.5" /></>,
   swap: <path d="M7 4L3.5 7.5 7 11M3.5 7.5h14M17 13l3.5 3.5L17 20M20.5 16.5h-14" />,
   sparkle: <path d="M12 3l2.1 6 6 2.1-6 2.1L12 19.5l-2.1-6.3-6-2.1 6-2.1z" />,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" /></>,
