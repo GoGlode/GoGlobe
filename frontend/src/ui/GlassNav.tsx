@@ -19,7 +19,7 @@ export default function GlassNav() {
         return (
           <NavLink key={it.to} to={it.to} aria-label={it.label} aria-current={active ? "page" : undefined}
             className={`glassnav__item ${it.center ? "glassnav__item--center" : ""} ${active ? "is-active" : ""}`}>
-            <MaskIcon src={it.icon} size={it.center ? 30 : 26} />
+            <MaskIcon src={it.icon} size={it.center ? 34 : 26} />
           </NavLink>
         );
       })}
