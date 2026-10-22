@@ -83,10 +83,18 @@ export const DESTINATIONS = [
   { id: "georgia", name: "Грузия", sub: "Горы и Тбилиси", img: IMG + "georgia-cover.jpg", query: "Хочу 6 дней в Грузии: Тбилиси, горы Казбеги и вино" },
 ];
 
-export const MY_TRIPS = {
-  upcoming: [
-    { tripId: "greece", title: "Санторини и Афины", range: "12 — 18 мая 2025 · 7 дней", status: "prep" as const, img: IMG + "hero.jpg" },
-    { tripId: "italy", title: "Италия: Рим и Амальфи", range: "3 — 10 июня 2025 · 8 дней", status: "confirmed" as const, img: IMG + "italy-cover.jpg" },
-  ],
-  past: [{ tripId: "bali", title: "Бали", range: "14 — 24 апреля 2025", img: IMG + "bali-cover.jpg" }],
-};
+/** Поездки пользователя для «Мои поездки». ДЕМО: даты считаются от сегодняшнего дня, статусы — тестовые. */
+export interface MyTrip { tripId: string; title: string; start: string; end: string; status?: "prep" | "confirmed"; img: string }
+
+function isoFromToday(days: number): string {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export const MY_TRIPS: MyTrip[] = [
+  { tripId: "italy", title: "Италия: Рим и Амальфи", start: isoFromToday(42), end: isoFromToday(49), status: "confirmed", img: IMG + "italy-cover.jpg" },
+  { tripId: "greece", title: "Санторини и Афины", start: isoFromToday(20), end: isoFromToday(26), status: "prep", img: IMG + "hero.jpg" },
+  { tripId: "bali", title: "Бали", start: isoFromToday(-190), end: isoFromToday(-180), img: IMG + "bali-cover.jpg" },
+];
