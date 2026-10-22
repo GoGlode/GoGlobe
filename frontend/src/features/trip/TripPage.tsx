@@ -7,6 +7,7 @@ import HotelsTab from "./tabs/HotelsTab";
 import ItineraryTab from "./tabs/ItineraryTab";
 import MapTab from "./tabs/MapTab";
 import OverviewTab from "./tabs/OverviewTab";
+import "./trip.css";
 
 export default function TripPage() {
   const { id, tab = "overview" } = useParams();

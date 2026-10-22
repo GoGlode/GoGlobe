@@ -1,0 +1,5 @@
+.fav-empty { text-align: center; padding-top: 90px; display: grid; gap: 12px; justify-items: center; }
+.fav-list { display: grid; gap: 12px; }
+.fav { display: flex; gap: 12px; align-items: center; background: var(--c-glass-strong); border-radius: 22px; padding: 10px; box-shadow: var(--shadow-md); }
+.fav__img { width: 92px; height: 78px; border-radius: 16px; overflow: hidden; flex: none; }
+.fav__txt { display: grid; gap: 3px; flex: 1; } .fav__txt b { font-size: 16px; } .fav__price { font-weight: 700; }
