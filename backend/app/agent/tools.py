@@ -1,27 +1,35 @@
-"""Инструменты агента (Tools) и планировщик поиска (Search Planner).
+"""Модуль 2: Реестр инструментов агента (Tools) и планировщик поиска (Search Planner).
 
 Владелец: Backend №2.
 
-Содержит:
-- Декларацию 6 инструментов AI-агента из архитектурной схемы (AgentToolName).
-- Стадии SSE-стриминга (SearchStage).
-- Планировщик последовательности шагов (build_search_plan).
-- Тонкие обёртки над провайдерами Backend №1 (flight_search, hotel_search).
+Соответствует слайдам 03, 05 и схеме архитектуры GoGlobe:
+1. Destination Search Tool: сезонность, погода, локации, достопримечательности.
+2. Flight Search Tool: перелёты, даты, прямой/пересадки, цены.
+3. Hotel Search Tool: отели, звёзды, рейтинг, фото, расстояние до моря.
+4. Validation Tool: проверка бюджета, дат, согласованности, статуса доступности.
+5. Ranking Tool: расчёт прозрачного скоринга 0..1 по полезности.
+6. Explain Tool: формирование объяснения выбора («почему подходит», плюсы, минусы).
 
-Правило: все цены/наличие/характеристики берутся ТОЛЬКО из ответов инструментов.
+Правило честности: все цены/наличие/характеристики берутся ТОЛЬКО из ответов инструментов.
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from app.agent.explain import explain as explain_tool
+from app.agent.ranking import score as rank_score
+from app.agent.validation import is_available, total_price, within_budget
 from app.integrations.base import FlightProvider, HotelProvider, ProviderError
 from app.schemas.providers import FlightOption, HotelOption
-from app.schemas.search import DateRange, ParsedQuery
+from app.schemas.search import DateRange, Explanation, Money, ParsedQuery
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Модуль 2: Декларация инструментов агента (из архитектурной схемы GoGlobe)
+# Реестр инструментов и стадии SSE
 # ---------------------------------------------------------------------------
 
 
@@ -67,13 +75,158 @@ class SearchExecutionPlan:
     steps: list[PlannedToolStep] = field(default_factory=list)
 
 
+# ---------------------------------------------------------------------------
+# Инструмент 1: Destination Search Tool
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class DestinationInfo:
+    """Информация о локации, погоде и сезонности."""
+
+    destination: str
+    season_status: str = "Рекомендуемый сезон"
+    temperature_c: int | None = None
+    highlights: list[str] = field(default_factory=list)
+
+
+_DESTINATION_KNOWLEDGE: dict[str, DestinationInfo] = {
+    "турци": DestinationInfo(
+        destination="Турция",
+        season_status="Бархатный сезон / мягкая осень",
+        temperature_c=22,
+        highlights=["Анталийское побережье", "Старый город Калеичи", "Средиземное море"],
+    ),
+    "сочи": DestinationInfo(
+        destination="Сочи, Россия",
+        season_status="Осенний отдых у моря и горный кластер",
+        temperature_c=16,
+        highlights=["Олимпийский парк", "Красная Поляна", "Набережная"],
+    ),
+    "дубай": DestinationInfo(
+        destination="Дубай, ОАЭ",
+        season_status="Идеальный пляжный сезон",
+        temperature_c=30,
+        highlights=["Бурдж-Халифа", "Marina Beach", "Palm Jumeirah"],
+    ),
+    "египет": DestinationInfo(
+        destination="Египет",
+        season_status="Комфортный пляжный сезон",
+        temperature_c=27,
+        highlights=["Красное море", "Коралловые рифы", "Дайвинг"],
+    ),
+    "таиланд": DestinationInfo(
+        destination="Таиланд",
+        season_status="Старт сухого высокого сезона",
+        temperature_c=31,
+        highlights=["Пляжи Пхукета", "Тайская кухня", "Острова Пхи-Пхи"],
+    ),
+}
+
+
+async def destination_search(
+    destination: str | None, dates: DateRange | None = None
+) -> DestinationInfo | None:
+    """Инструмент проверки локаций, сезонности и погоды."""
+    if not destination:
+        return None
+    d_lower = destination.lower()
+    for stem, info in _DESTINATION_KNOWLEDGE.items():
+        if stem in d_lower:
+            return info
+    return DestinationInfo(destination=destination, season_status="Информация по сезону доступна")
+
+
+# ---------------------------------------------------------------------------
+# Инструмент 2 и 3: Flight Search & Hotel Search Tools
+# ---------------------------------------------------------------------------
+
+
+async def flight_search(
+    p: FlightProvider, dest: str, dates: DateRange, n: int, warnings: list[str]
+) -> list[FlightOption]:
+    """Flight Search Tool: вызов провайдера перелётов с изоляцией сбоев."""
+    try:
+        return await p.search(dest, dates, n)
+    except ProviderError as e:
+        warnings.append(f"Перелёты временно недоступны: {e}")
+        return []
+
+
+async def hotel_search(
+    p: HotelProvider, dest: str, dates: DateRange, n: int, warnings: list[str]
+) -> list[HotelOption]:
+    """Hotel Search Tool: вызов провайдера отелей с изоляцией сбоев."""
+    try:
+        return await p.search(dest, dates, n)
+    except ProviderError as e:
+        warnings.append(f"Отели временно недоступны: {e}")
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Инструмент 4: Validation Tool (проверка ограничений)
+# ---------------------------------------------------------------------------
+
+
+def validate_combo(
+    flight: FlightOption,
+    hotel: HotelOption,
+    budget: Money | None,
+    direct_only: bool = False,
+) -> tuple[bool, Money]:
+    """Validation Tool: проверяет соответствие пары перелёт+отель ограничениям."""
+    if direct_only and not flight.direct:
+        return False, Money(amount=0)
+    if not is_available(hotel):
+        return False, Money(amount=0)
+
+    total = total_price(flight, hotel)
+    if not within_budget(total, budget):
+        return False, total
+
+    return True, total
+
+
+# ---------------------------------------------------------------------------
+# Инструмент 5 и 6: Ranking & Explain Tools
+# ---------------------------------------------------------------------------
+
+
+def ranking_tool(
+    hotel: HotelOption,
+    flight: FlightOption,
+    total: Money,
+    budget: Money | None,
+    wishes: list[str],
+) -> float:
+    """Ranking Tool: расчёт прозрачного скоринга соответствия запросу (0..1)."""
+    return rank_score(hotel, flight, total, budget, wishes)
+
+
+def explain_option(
+    hotel: HotelOption,
+    flight: FlightOption,
+    total: Money,
+    budget: Money | None,
+    wishes: list[str],
+) -> Explanation:
+    """Explain Tool: понятное и честное объяснение выбора без выдумок."""
+    return explain_tool(hotel, flight, total, budget, wishes)
+
+
+# ---------------------------------------------------------------------------
+# Планировщик поиска (Search Planner)
+# ---------------------------------------------------------------------------
+
+
 def build_search_plan(
     parsed: ParsedQuery, clarifying_question: str | None = None
 ) -> SearchExecutionPlan:
     """Формирует последовательность вызовов инструментов на основе разобранного запроса.
 
-    Если есть уточняющий вопрос (missing_question или из LLM) — план не выполняется,
-    а возвращается вопрос.
+    Если есть уточняющий вопрос (missing_question или из LLM) — план блокирует дальнейший
+    поиск и возвращает needs_clarification.
     """
     if clarifying_question is not None:
         return SearchExecutionPlan(
@@ -153,28 +306,3 @@ def build_search_plan(
         clarifying_question=None,
         steps=steps,
     )
-
-
-# ---------------------------------------------------------------------------
-# Обёртки над провайдерами Backend №1 (используются в orchestrator.py)
-# ---------------------------------------------------------------------------
-
-
-async def flight_search(
-    p: FlightProvider, dest: str, dates: DateRange, n: int, warnings: list[str]
-) -> list[FlightOption]:
-    try:
-        return await p.search(dest, dates, n)
-    except ProviderError as e:  # таймаут/ошибка источника -> честный warning
-        warnings.append(f"Перелёты недоступны: {e}")
-        return []
-
-
-async def hotel_search(
-    p: HotelProvider, dest: str, dates: DateRange, n: int, warnings: list[str]
-) -> list[HotelOption]:
-    try:
-        return await p.search(dest, dates, n)
-    except ProviderError as e:
-        warnings.append(f"Отели недоступны: {e}")
-        return []

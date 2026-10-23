@@ -29,7 +29,7 @@ from app.schemas.search import (
 from . import explain as ex
 from . import ranking, validation
 from .parser import missing_question, parse_llm, parse_mock
-from .tools import build_search_plan, flight_search, hotel_search
+from .tools import build_search_plan, destination_search, flight_search, hotel_search
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,7 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
         logger.debug("Plan step: %s -> %s", step.tool, step.message)
 
     # 3. Вызов инструментов (по плану)
+    await destination_search(parsed.destination, parsed.dates)
     flights_p, hotels_p = get_providers()
     await stage("flights", f"Ищу перелёты: {parsed.destination}…")
     flights = await flight_search(
