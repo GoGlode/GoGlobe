@@ -1,4 +1,5 @@
 """Validation Tool: бюджет, даты, доступность. Владелец: Backend №2 (корректность данных — №1)."""
+
 from datetime import date
 
 from app.schemas.providers import FlightOption, HotelOption
@@ -10,8 +11,10 @@ def nights(d: DateRange) -> int:
 
 
 def total_price(f: FlightOption, h: HotelOption) -> Money:
-    return Money(amount=f.price.amount + h.price_per_night.amount * nights(f.dates),
-                 currency=f.price.currency)
+    return Money(
+        amount=f.price.amount + h.price_per_night.amount * nights(f.dates),
+        currency=f.price.currency,
+    )
 
 
 def within_budget(total: Money, budget: Money | None) -> bool:

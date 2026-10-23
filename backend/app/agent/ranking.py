@@ -1,10 +1,12 @@
 """Ranking Tool: прозрачный скоринг 0..1. Владелец: Backend №2."""
+
 from app.schemas.providers import FlightOption, HotelOption
 from app.schemas.search import Money
 
 
-def score(h: HotelOption, f: FlightOption, total: Money, budget: Money | None,
-          wishes: list[str]) -> float:
+def score(
+    h: HotelOption, f: FlightOption, total: Money, budget: Money | None, wishes: list[str]
+) -> float:
     s = 0.0
     s += 0.35 * ((h.rating or 4.0) / 5)
     if budget:

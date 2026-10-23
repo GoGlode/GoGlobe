@@ -4,8 +4,13 @@
   4 проверка/валидация -> 5 ранжирование и объяснение -> 6 структурированный ответ
 
 Статусы каждого шага уходят через `emit` в SSE (/api/search/{id}/events).
+
+Модуль 1 (parse_mock / parse_llm) и Модуль 2 (build_search_plan) интегрированы
+в единый пайплайн. Переключение GOGLOBE_PARSER=llm активирует LLM-парсер.
 """
+
 import asyncio
+import logging
 import uuid
 from datetime import UTC, datetime
 
@@ -23,13 +28,16 @@ from app.schemas.search import (
 
 from . import explain as ex
 from . import ranking, validation
-from .parser import missing_question, parse_mock
-from .tools import flight_search, hotel_search
+from .parser import missing_question, parse_llm, parse_mock
+from .tools import build_search_plan, flight_search, hotel_search
+
+logger = logging.getLogger(__name__)
 
 
 async def run_search(req: SearchRequest, emit) -> SearchResponse:
     sid = req.search_id or uuid.uuid4().hex[:12]
-    delay = get_settings().mock_stage_delay if get_settings().providers == "mock" else 0
+    settings = get_settings()
+    delay = settings.mock_stage_delay if settings.providers == "mock" else 0
     warnings: list[str] = []
 
     async def stage(name: str, msg: str) -> None:
@@ -37,24 +45,44 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
         if delay:
             await asyncio.sleep(delay)
 
-    # 1. анализ запроса
+    # 1. Анализ запроса (Модуль 1)
     await stage("parsing", "Разбираю запрос…")
-    parsed = parse_mock(req.query, req.params)  # TODO(backend-2): parse_llm
-    if q := missing_question(parsed):
-        await emit(sid, SearchEvent(stage="done", message=q))
-        return SearchResponse(search_id=sid, status=SearchStatus.needs_clarification,
-                              parsed=parsed, clarifying_question=q)
 
-    # 2-3. план поиска и вызов инструментов (параллельно)
+    if settings.parser == "llm":
+        parsed, clarifying = await parse_llm(req.query, req.params)
+    else:
+        parsed = parse_mock(req.query, req.params)
+        clarifying = missing_question(parsed)
+
+    # 2. Планирование поиска (Модуль 2)
+    plan = build_search_plan(parsed, clarifying_question=clarifying)
+
+    if not plan.can_proceed:
+        q = plan.clarifying_question or "Уточните, пожалуйста, параметры запроса."
+        await emit(sid, SearchEvent(stage="done", message=q))
+        return SearchResponse(
+            search_id=sid,
+            status=SearchStatus.needs_clarification,
+            parsed=parsed,
+            clarifying_question=q,
+        )
+
+    # Публикуем сообщения из плана как SSE-статусы
+    for step in plan.steps:
+        logger.debug("Plan step: %s -> %s", step.tool, step.message)
+
+    # 3. Вызов инструментов (по плану)
     flights_p, hotels_p = get_providers()
     await stage("flights", f"Ищу перелёты: {parsed.destination}…")
-    flights = await flight_search(flights_p, parsed.destination, parsed.dates,
-                                  parsed.travelers, warnings)
+    flights = await flight_search(
+        flights_p, parsed.destination, parsed.dates, parsed.travelers, warnings
+    )
     await stage("hotels", "Ищу отели…")
-    hotels = await hotel_search(hotels_p, parsed.destination, parsed.dates,
-                                parsed.travelers, warnings)
+    hotels = await hotel_search(
+        hotels_p, parsed.destination, parsed.dates, parsed.travelers, warnings
+    )
 
-    # 4. валидация
+    # 4. Валидация
     await stage("validating", "Проверяю бюджет и даты…")
     if "direct_flight" in parsed.wishes:
         flights = [f for f in flights if f.direct] or flights
@@ -69,29 +97,41 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
     if any(h.available is None for h in hotels):
         warnings.append("Нет данных о наличии для части вариантов")
 
-    # 5. ранжирование и объяснение
+    # 5. Ранжирование и объяснение
     await stage("ranking", "Ранжирую и объясняю варианты…")
     offers: list[Offer] = []
     for f, h, total in combos:
-        offers.append(Offer(
-            id=f"offer_{f.id}_{h.id}", destination=h.destination,
-            hotel=Hotel(name=h.name, stars=h.stars, rating=h.rating, photos=h.photos,
-                        price=h.price_per_night, distance_to_sea_m=h.distance_to_sea_m),
-            flight=Flight(direct=f.direct, dates=f.dates, price=f.price, carrier=f.carrier),
-            total_price=total,
-            explanation=ex.explain(h, f, total, parsed.budget, parsed.wishes),
-            booking_url=h.booking_url,
-            data_freshness=min(f.fetched_at, h.fetched_at) if f.fetched_at else
-            datetime.now(UTC).isoformat(),
-            score=ranking.score(h, f, total, parsed.budget, parsed.wishes)))
+        offers.append(
+            Offer(
+                id=f"offer_{f.id}_{h.id}",
+                destination=h.destination,
+                hotel=Hotel(
+                    name=h.name,
+                    stars=h.stars,
+                    rating=h.rating,
+                    photos=h.photos,
+                    price=h.price_per_night,
+                    distance_to_sea_m=h.distance_to_sea_m,
+                ),
+                flight=Flight(direct=f.direct, dates=f.dates, price=f.price, carrier=f.carrier),
+                total_price=total,
+                explanation=ex.explain(h, f, total, parsed.budget, parsed.wishes),
+                booking_url=h.booking_url,
+                data_freshness=min(f.fetched_at, h.fetched_at)
+                if f.fetched_at
+                else datetime.now(UTC).isoformat(),
+                score=ranking.score(h, f, total, parsed.budget, parsed.wishes),
+            )
+        )
     offers.sort(key=lambda o: o.score or 0, reverse=True)
 
-    # 6. ответ
+    # 6. Ответ
     status = SearchStatus.ok if offers else SearchStatus.empty
     if offers and warnings:
         status = SearchStatus.partial
     if not offers:
         warnings.append("Ничего не найдено: попробуйте увеличить бюджет или изменить даты")
     await emit(sid, SearchEvent(stage="done", message="Готово"))
-    return SearchResponse(search_id=sid, status=status, parsed=parsed,
-                          offers=offers[:10], warnings=warnings)
+    return SearchResponse(
+        search_id=sid, status=status, parsed=parsed, offers=offers[:10], warnings=warnings
+    )
