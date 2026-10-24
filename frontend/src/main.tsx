@@ -8,6 +8,7 @@ import { ProfileProvider } from "./state/ProfileContext";
 import PhoneFrame, { shouldUsePhoneFrame } from "./ui/PhoneFrame";
 import { SearchProvider } from "./state/SearchContext";
 import "./design/global.css";
+import "./ui/liquid.css"; // стеклянные кнопки — после всех стилей экранов
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
