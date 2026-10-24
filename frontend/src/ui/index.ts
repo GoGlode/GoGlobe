@@ -6,3 +6,6 @@ export { default as PageHeader } from "./PageHeader";
 export { default as Rating } from "./Rating";
 export { default as Photo } from "./Photo";
 export { default as ComingSoon } from "./ComingSoon";
+export { default as CityInput } from "./CityInput";
+export type { CityOption } from "./CityInput";
+export { default as ThemeToggle } from "./ThemeToggle";

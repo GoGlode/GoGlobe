@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<!-- Фирменная иконка AI-поиска: лупа с четырёхконечной звездой и искрой сверху слева -->
+<g fill="none" stroke="currentColor" stroke-width="5.2" stroke-linecap="round"><circle cx="30" cy="30.5" r="19.4"/><path d="M44 44.5 56.5 57"/></g>
+<path d="M30 19.5C31.05 27.25 33.24 29.45 41 30.5C33.24 31.55 31.05 33.74 30 41.5C28.95 33.74 26.75 31.55 19 30.5C26.75 29.45 28.95 27.25 30 19.5Z" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>
+<path d="M10.5 1.7C11.13 6.35 12.45 7.67 17.1 8.3C12.45 8.93 11.13 10.25 10.5 14.9C9.87 10.25 8.55 8.93 3.9 8.3C8.55 7.67 9.87 6.35 10.5 1.7Z" fill="currentColor" stroke="currentColor" stroke-width="0.8" stroke-linejoin="round"/>
+</svg>
