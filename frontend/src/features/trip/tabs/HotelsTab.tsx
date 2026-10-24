@@ -23,7 +23,7 @@ export default function HotelsTab({ trip: t }: { trip: Trip }) {
       <div className="scroll-x" style={{ padding: "0 var(--s-4) 12px" }}>{FILTERS.map((x) => <button key={x.id} className={`chip ${f === x.id ? "chip--active" : ""}`} onClick={() => setF(x.id)}>{x.label}</button>)}</div>
       {list.length === 0 && <p className="muted" style={{ textAlign: "center", padding: 32 }}>В этом городе нет отелей по выбранному фильтру</p>}
       {list.map((h) => <HotelCard key={h.id} h={h} fav={has(h.id)} onFav={() => toggle(h.id)} />)}
-      <p className="muted tdemo">Демо-данные: цены и рейтинги ориентировочные</p>
+      {t.demo && <p className="muted tdemo">Демо-данные: цены и рейтинги ориентировочные</p>}
     </>
   );
 }
@@ -39,7 +39,7 @@ function HotelCard({ h, fav, onFav }: { h: Hotel; fav: boolean; onFav: () => voi
         <div className="hcard__loc"><Icon name="pin" size={18} />{h.location}</div>
         <div className="hcard__am">{h.amenities.map((a) => <span key={a.label}><Icon name={a.icon} size={18} />{a.label}</span>)}</div>
         <div className="hcard__foot">
-          <div className="hcard__price"><b>{money(h.pricePerNight)}</b><small>за ночь</small></div>
+          <div className="hcard__price"><b>{h.pricePerNight ? money(h.pricePerNight) : "—"}</b><small>{h.pricePerNight ? h.priceNote ?? "за ночь" : "цена не указана"}</small></div>
           <button className="btn btn--sm" onClick={() => setOpen(!open)}>Подробнее <Icon name="arrow-right" size={18} /></button>
         </div>
         {open && <p className="hcard__note">Ссылка на бронирование появится после подключения реальных источников данных.</p>}

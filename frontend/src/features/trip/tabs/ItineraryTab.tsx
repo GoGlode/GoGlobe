@@ -17,9 +17,10 @@ export default function ItineraryTab({ trip: t }: { trip: Trip }) {
         <button className="circle-btn" aria-label="В избранное" style={{ color: has(t.id) ? "var(--c-danger)" : undefined }} onClick={() => toggle(t.id)}><Icon name="heart" size={20} filled={has(t.id)} /></button>
       </>} />
       <TripTabs id={t.id} current="itinerary" />
-      <div className="days scroll-x">
+      {t.itinerary.length === 0 && <p className="page muted tl-empty">Маршрут по дням пока недоступен: источники данных не передали программу поездки.</p>}
+      {t.itinerary.length > 0 && <div className="days scroll-x">
         {t.itinerary.map((d) => <button key={d.day} className={`chip ${cur === d.day ? "chip--active" : ""}`} onClick={() => jump(d.day)}>День {d.day}</button>)}
-      </div>
+      </div>}
       <div className="tl">
         {t.itinerary.map((d) => (
           <section className="tl__day" id={`day-${d.day}`} key={d.day}>

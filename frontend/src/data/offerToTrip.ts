@@ -33,8 +33,9 @@ export function offerToTrip(o: Offer, parsed?: Pick<ParsedQuery, "travelers">): 
     hotels: [{
       id: `${o.id}-hotel`, city: o.destination, name: h.name, rating: h.rating ?? undefined, stars: h.stars ?? undefined, location: o.destination,
       photo: photos[0] ?? "", amenities: toSea != null ? [{ icon: "waves", label: `${toSea} м до моря` }] : [], tags: [],
-      // Контракт не уточняет, цена отеля за ночь или за весь срок — берём как есть (вопрос к Backend, см. PR)
-      pricePerNight: h.price ?? o.total_price,
+      // Контракт не уточняет, цена отеля за ночь или за весь срок — показываем как есть, без слов «за ночь» (вопрос к Backend, см. PR).
+      // Нет цены отеля — не подставляем общую стоимость поездки: это было бы ложью.
+      pricePerNight: h.price ?? undefined, priceNote: "цена по данным источника",
     }],
     flights: [{
       id: `${o.id}-flight`, airline: f.carrier ?? "Авиакомпания не указана", code: "", logoColor: "#6b7a96", depart: "—", arrive: "—", from: "", fromCity: "", to: "", toCity: "",

@@ -10,7 +10,7 @@
   --c-success-bg: rgba(18, 161, 80, .18);
   --grad-page: linear-gradient(180deg, #0c1a36 0%, #0a1326 50%, #070d1b 100%);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, .35); --shadow-md: 0 8px 24px rgba(0, 0, 0, .4);
-  --d-surface: #15223b; --d-tint: rgba(7, 135, 249, .16); --d-tint-2: rgba(255, 255, 255, .07);
+  --c-link: #3aa3ff; --c-danger-text: #ff8a8e; --d-surface: #15223b; --d-tint: rgba(7, 135, 249, .16); --d-tint-2: rgba(255, 255, 255, .07);
 
   /* Стекло */
   --lg-white-bg: linear-gradient(180deg, rgba(255, 255, 255, .16) 0, rgba(255, 255, 255, .04) 55%, rgba(255, 255, 255, 0) 100%), linear-gradient(180deg, rgba(56, 78, 120, .72), rgba(32, 48, 84, .68));
@@ -72,7 +72,7 @@
 :root[data-theme="dark"] .fl-modes { background: rgba(255, 255, 255, .06); }
 :root[data-theme="dark"] .fl-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 :root[data-theme="dark"] :is(.tl__items, .tcard__why p, .stop small) { color: #b3c1dc; }
-:root[data-theme="dark"] .cal__day.is-out button, :root[data-theme="dark"] .cal__day.muted button { color: #5e6f92; }
+:root[data-theme="dark"] .cal__day.is-out button, :root[data-theme="dark"] .cal__day.muted button { color: #7384a6; }
 
 :root[data-theme="dark"] .photo--empty { background: linear-gradient(135deg, #1a2a4a, #223559 55%, #182642); }
 

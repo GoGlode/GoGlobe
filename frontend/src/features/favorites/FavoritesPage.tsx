@@ -3,12 +3,14 @@ import { Link } from "react-router-dom";
 import { money } from "../../data/format";
 import { TRIPS } from "../../data/trips";
 import { useFavorites } from "../../state/FavoritesContext";
+import { useSearch } from "../../state/SearchContext";
 import { Icon, PageHeader, Photo } from "../../ui";
 import "./favorites.css";
 
 export default function FavoritesPage() {
   const { ids, toggle } = useFavorites();
-  const list = TRIPS.filter((t) => ids.includes(t.id));
+  const { trips: found } = useSearch(); // варианты из текущего поиска (в т.ч. из API) + демо-список
+  const list = [...TRIPS, ...found.filter((f) => !TRIPS.some((t) => t.id === f.id))].filter((t) => ids.includes(t.id));
   return (
     <>
       <PageHeader title="Избранное" />
