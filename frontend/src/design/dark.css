@@ -74,6 +74,8 @@
 :root[data-theme="dark"] :is(.tl__items, .tcard__why p, .stop small) { color: #b3c1dc; }
 :root[data-theme="dark"] .cal__day.is-out button, :root[data-theme="dark"] .cal__day.muted button { color: #5e6f92; }
 
+:root[data-theme="dark"] .photo--empty { background: linear-gradient(135deg, #1a2a4a, #223559 55%, #182642); }
+
 /* Зелёные статусы и логотип */
 :root[data-theme="dark"] .mtcard__status.is-confirmed { background: rgba(18, 161, 80, .2); color: #62d99a; }
 :root[data-theme="dark"] .hcard2__status.is-saved { background: rgba(18, 161, 80, .2); color: #62d99a; }
