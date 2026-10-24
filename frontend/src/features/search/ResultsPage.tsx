@@ -5,6 +5,7 @@ import { money } from "../../data/format";
 import type { Trip } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
+import { BookButton, SourceLine } from "../trip/OfferInfo";
 import { Icon, Photo } from "../../ui";
 import "./results.css";
 
@@ -124,7 +125,12 @@ function TripCard({ trip: t, index, total, fav, onFav, onOpen }: { trip: Trip; i
           <div><Icon name="wallet" size={24} /><span><b>{money(t.price)}</b><small>на двоих</small></span></div>
         </div>
         <div className="tcard__thumbs">{t.photos.slice(0, 4).map((p, i) => <Photo key={i} src={p.src} pos={p.pos} alt={p.label} />)}</div>
-        <div className="tcard__why"><span><Icon name="sparkle" size={18} /></span><div><b>Почему этот вариант</b><p>{t.why}</p></div></div>
+        <div className="tcard__why"><span><Icon name="sparkle" size={18} /></span><div>
+          <b>Почему этот вариант</b>
+          {t.explanation.why.length > 1 ? <ul className="why-list">{t.explanation.why.map((w) => <li key={w}>{w}</li>)}</ul> : <p>{t.explanation.why[0] ?? t.why}</p>}
+          <SourceLine trip={t} />
+        </div></div>
+        <div className="tcard__book"><BookButton trip={t} compact /></div>
       </div>
     </article>
   );
