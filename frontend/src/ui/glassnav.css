@@ -6,3 +6,38 @@
 .glassnav__item--center { width: 72px; height: 64px; border-radius: 50%; background: var(--grad-primary); color: #fff; border: 0;
   box-shadow: var(--shadow-glow); }
 .glassnav__item:active { transform: scale(.94); }
+
+/* ── «Переливающееся» стекло: одна линза переезжает под активную иконку (как в Telegram на iOS) ── */
+.glassnav { overflow: visible; }
+.glassnav__lens { position: absolute; left: 0; top: 50%; margin-top: calc(var(--lens-h, 56px) / -2); z-index: 0; border-radius: 999px; pointer-events: none;
+  opacity: 0; background: var(--lg-white-bg); box-shadow: var(--lg-edge); overflow: hidden;
+  -webkit-backdrop-filter: blur(10px) saturate(1.8); backdrop-filter: blur(10px) saturate(1.8); }
+.glassnav__lens.is-ready { opacity: 1; transition: opacity .2s, transform .35s cubic-bezier(.3, 1.6, .5, 1), box-shadow .3s; } /* положение и размер ведёт физика в GlassNav.tsx */
+.glassnav__lens::after { content: ""; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .95) 45%, rgba(255, 255, 255, .55) 55%, transparent 80%); background-size: 250% 100%; background-position: 120% 0; }
+.glassnav__lens.is-moving::after { animation: lens-sheen .6s ease-out; }
+@keyframes lens-stretch { 0% { transform: scale(1, 1); } 35% { transform: scale(1.22, .92); } 100% { transform: scale(1, 1); } }
+@keyframes lens-sheen { 0% { opacity: 0; background-position: 120% 0; } 25% { opacity: 1; } 100% { opacity: 0; background-position: -20% 0; } }
+
+/* Пункты теперь без собственного стекла — стекло даёт линза */
+.glassnav .glassnav__item { position: relative; z-index: 1; }
+.glassnav .glassnav__item:not(.glassnav__item--center) { background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border: 0;
+  transition: transform .15s, color .3s; }
+.glassnav .glassnav__item.is-active:not(.glassnav__item--center) { background: none; color: var(--c-primary); }
+@media (prefers-reduced-motion: reduce) { .glassnav__lens.is-ready { transition: none; } .glassnav__lens.is-moving::after { animation: none; } }
+
+/* ── Перетаскивание: стекло приподнимается и идёт за пальцем без задержки ── */
+.glassnav { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.glassnav__lens { transform-origin: center; will-change: translate; }
+.glassnav__lens.is-dragging { transform: scale(1.14); z-index: 2;
+  box-shadow: var(--lg-edge), 0 12px 26px -6px rgba(7, 135, 249, .35); }
+.glassnav__lens.is-dragging::after { opacity: .6; background-position: 40% 0; }
+.glassnav .glassnav__item.is-active:not(.glassnav__item--center) { z-index: 3; }
+
+/* Линза нейтральнее: без голубого оттенка заливки, блика и нижней тени */
+.glassnav .glassnav__lens {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .92) 0, rgba(255, 255, 255, .3) 55%, rgba(255, 255, 255, 0) 100%), linear-gradient(180deg, rgba(250, 252, 255, .75), rgba(240, 245, 252, .6));
+  box-shadow: 0 6px 16px -4px rgba(30, 60, 110, .16), 0 1px 2px rgba(16, 36, 72, .06), inset 0 0 0 1px rgba(255, 255, 255, .8), inset 0 1.5px 0 #fff,
+    inset 0 -1px 0 rgba(190, 205, 225, .5), inset 0 -8px 12px -8px rgba(100, 120, 150, .1);
+}
+.glassnav .glassnav__lens.is-dragging { box-shadow: 0 12px 26px -6px rgba(30, 60, 110, .25), inset 0 0 0 1px rgba(255, 255, 255, .85), inset 0 1.5px 0 #fff, inset 0 -1px 0 rgba(190, 205, 225, .5); }

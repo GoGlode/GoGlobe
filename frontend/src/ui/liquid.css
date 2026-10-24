@@ -1,23 +1,33 @@
-/* «Жидкое стекло» для всех кнопок GoGlobe. Эффект взят из liquid-glass-button (21st.dev): слой внутренних теней —
-   тонкая кромка по двум углам, мягкое свечение внутри, лёгкая тень снаружи. Реализован на чистом CSS поверх существующих
-   классов кнопок (в проекте нет Tailwind/shadcn). Подключается последним в main.tsx, поэтому перекрывает прежние фоны и тени.
-   SVG-искажение фона (backdrop-filter: url(#…)) не используется: оно работает только в Chromium и не поддерживается в Safari/iOS. */
+/* «Жидкое стекло» GoGlobe — собственная отрисовка на чистом CSS (без внешних рецептов).
+   Слои: полупрозрачная заливка с бликом в верхней половине, светлая рамка в 1px, яркая линия-блик по верхнему краю,
+   синеватая тень внутри снизу (преломление) и мягкая цветная тень снаружи. Тёмных контуров нет.
+   Подключается последним в main.tsx и перекрывает прежние фоны и тени. */
 :root {
-  /* Светлое стекло: тёмная кромка, как на образце */
+  --lg-white-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, .95) 0, rgba(255, 255, 255, .25) 55%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(246, 251, 255, .78), rgba(226, 240, 255, .62));
   --lg-edge:
-    0 0 6px rgba(0, 0, 0, .03), 0 2px 6px rgba(0, 0, 0, .08),
-    inset 3px 3px .5px -3px rgba(0, 0, 0, .9), inset -3px -3px .5px -3px rgba(0, 0, 0, .85),
-    inset 1px 1px 1px -.5px rgba(0, 0, 0, .6), inset -1px -1px 1px -.5px rgba(0, 0, 0, .6),
-    inset 0 0 6px 6px rgba(0, 0, 0, .12), inset 0 0 2px 2px rgba(0, 0, 0, .06), 0 0 12px rgba(255, 255, 255, .15);
-  /* Цветное стекло: светлая кромка и синее свечение */
-  --lg-edge-blue:
-    0 8px 20px -4px rgba(7, 135, 249, .45), 0 0 6px rgba(7, 135, 249, .12),
-    inset 3px 3px .5px -3.5px rgba(255, 255, 255, .95), inset -3px -3px .5px -3.5px rgba(255, 255, 255, .6),
-    inset 1px 1px 1px -.5px rgba(255, 255, 255, .85), inset -1px -1px 1px -.5px rgba(255, 255, 255, .55),
-    inset 0 0 6px 6px rgba(255, 255, 255, .14), inset 0 0 2px 2px rgba(255, 255, 255, .08);
-  --lg-white-bg: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .42));
-  --lg-blue-bg: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 48%),
+    0 6px 16px -4px rgba(30, 90, 180, .22), 0 1px 2px rgba(16, 36, 72, .06),
+    inset 0 0 0 1px rgba(255, 255, 255, .75),
+    inset 0 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(150, 190, 240, .45),
+    inset 0 -10px 14px -8px rgba(7, 135, 249, .16);
+  --lg-blue-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, 0) 50%),
     linear-gradient(135deg, rgba(24, 199, 255, .96), rgba(7, 135, 249, .96) 55%, rgba(6, 104, 247, .98));
+  --lg-edge-blue:
+    0 10px 22px -6px rgba(7, 135, 249, .5), 0 1px 2px rgba(6, 80, 200, .2),
+    inset 0 0 0 1px rgba(255, 255, 255, .3),
+    inset 0 1.5px 0 rgba(255, 255, 255, .8),
+    inset 0 -8px 12px -6px rgba(4, 70, 190, .4);
+  --lg-surface-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, .9) 0, rgba(255, 255, 255, .45) 40%, rgba(255, 255, 255, 0) 100%),
+    linear-gradient(180deg, rgba(247, 251, 255, .72), rgba(236, 245, 255, .6));
+  --lg-surface-edge:
+    0 10px 28px -8px rgba(30, 90, 180, .2), 0 1px 3px rgba(16, 36, 72, .05),
+    inset 0 0 0 1px rgba(255, 255, 255, .8),
+    inset 0 1.5px 0 #fff,
+    inset 0 -1px 0 rgba(160, 195, 240, .4);
 }
 
 /* ── Белое стекло ── */
@@ -25,19 +35,17 @@
 .tcard__heart, .hcard__heart, .res__round, .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
 .home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .hist__filter-btn {
   background: var(--lg-white-bg);
-  -webkit-backdrop-filter: blur(10px) saturate(1.7); backdrop-filter: blur(10px) saturate(1.7);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8); backdrop-filter: blur(12px) saturate(1.8);
   border: 0; box-shadow: var(--lg-edge);
   transition: transform .3s, box-shadow .3s, background .2s, color .2s;
 }
-/* Мелкие элементы: кромка чуть мягче, чтобы не «шумела» */
+/* Мелкие элементы: тень компактнее */
 button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
 .home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .circle-btn, .hist__filter-btn {
-  --lg-soft: 1;
   box-shadow:
-    0 0 4px rgba(0, 0, 0, .03), 0 2px 5px rgba(0, 0, 0, .08),
-    inset 2px 2px .5px -2.5px rgba(0, 0, 0, .75), inset -2px -2px .5px -2.5px rgba(0, 0, 0, .7),
-    inset 1px 1px 1px -.5px rgba(0, 0, 0, .45), inset -1px -1px 1px -.5px rgba(0, 0, 0, .45),
-    inset 0 0 5px 5px rgba(0, 0, 0, .08), inset 0 0 2px 2px rgba(0, 0, 0, .04);
+    0 4px 10px -3px rgba(30, 90, 180, .2), 0 1px 2px rgba(16, 36, 72, .05),
+    inset 0 0 0 1px rgba(255, 255, 255, .75), inset 0 1.5px 0 #fff,
+    inset 0 -1px 0 rgba(150, 190, 240, .45), inset 0 -6px 10px -6px rgba(7, 135, 249, .14);
 }
 .cal__nav { color: var(--c-primary); }
 
@@ -51,10 +59,9 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 }
 .chip--active, .ttab.is-on, .seg button.on, .fl-modes button.on {
   box-shadow:
-    0 5px 14px -3px rgba(7, 135, 249, .4),
-    inset 2px 2px .5px -3px rgba(255, 255, 255, .95), inset -2px -2px .5px -3px rgba(255, 255, 255, .6),
-    inset 1px 1px 1px -.5px rgba(255, 255, 255, .85), inset -1px -1px 1px -.5px rgba(255, 255, 255, .5),
-    inset 0 0 5px 5px rgba(255, 255, 255, .12);
+    0 6px 14px -4px rgba(7, 135, 249, .45), 0 1px 2px rgba(6, 80, 200, .2),
+    inset 0 0 0 1px rgba(255, 255, 255, .3), inset 0 1.5px 0 rgba(255, 255, 255, .8),
+    inset 0 -6px 10px -5px rgba(4, 70, 190, .35);
 }
 .glassnav__item--center { text-shadow: none; }
 
@@ -72,7 +79,16 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 /* Кнопки, у которых экран задал свой фон более специфичным правилом */
 .hcard2__actions .btn.btn--ghost, .prof-edit {
   background: var(--lg-white-bg); color: var(--c-primary);
-  -webkit-backdrop-filter: blur(10px) saturate(1.7); backdrop-filter: blur(10px) saturate(1.7);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8); backdrop-filter: blur(12px) saturate(1.8);
   box-shadow: var(--lg-edge);
 }
 .prof-edit:hover { background: var(--lg-white-bg); filter: brightness(1.03); }
+
+/* ── Поверхности: карточки и панели в том же стекле ── */
+.card, .prof-card, .fcard, .fav, .hcard2, .tl__card, .mtcard, .cal.card, .stop, .pin__lbl {
+  background: var(--lg-surface-bg); border: 0; box-shadow: var(--lg-surface-edge);
+  -webkit-backdrop-filter: blur(16px) saturate(1.7); backdrop-filter: blur(16px) saturate(1.7);
+}
+.seg { background: rgba(255, 255, 255, .45); box-shadow: var(--lg-surface-edge); border: 0; }
+.prof-stats > div, .prof-prefs__ic, .prof-chip { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .8), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(160, 195, 240, .3); }
+.prof-field input { background: rgba(255, 255, 255, .7); border: 0; box-shadow: var(--lg-surface-edge); }
