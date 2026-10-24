@@ -8,10 +8,14 @@ import TripTabs from "../TripTabs";
 export default function MapTab({ trip: t }: { trip: Trip }) {
   const nav = useNavigate();
   const [a, b] = [t.stops[0], t.stops[1]];
+  const header = (<>
+    <PageHeader title="Карта" onBack={() => nav(`/trip/${t.id}`)} right={<span className="circle-btn"><Icon name="map" size={20} /></span>} />
+    <TripTabs id={t.id} current="map" />
+  </>);
+  if (!a) return <>{header}<p className="page muted tl-empty">Точки маршрута пока недоступны: источники данных их не передали.</p></>;
   return (
     <>
-      <PageHeader title="Карта" onBack={() => nav(`/trip/${t.id}`)} right={<span className="circle-btn"><Icon name="map" size={20} /></span>} />
-      <TripTabs id={t.id} current="map" />
+      {header}
       <div className="map" role="img" aria-label={`Маршрут: ${t.stops.map((s) => s.city).join(" → ")}`}>
         <svg className="bg" viewBox="0 0 100 130" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
           <defs>
@@ -25,7 +29,7 @@ export default function MapTab({ trip: t }: { trip: Trip }) {
           <g fill="#fff" filter="url(#soft)" opacity=".7"><ellipse cx="86" cy="18" rx="16" ry="7" /><ellipse cx="94" cy="36" rx="12" ry="9" /><ellipse cx="90" cy="100" rx="14" ry="8" /></g>
         </svg>
         <svg className="bg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" style={{ height: "100%" }}>
-          <path d={`M${a.x} ${a.y + 8} Q ${(a.x + b.x) / 2 + 18} ${(a.y + b.y) / 2 - 4} ${b.x} ${b.y - 6}`} fill="none" stroke="#fff" strokeWidth="0.9" strokeDasharray="2.2 2" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 3 }} />
+          {b && <path d={`M${a.x} ${a.y + 8} Q ${(a.x + b.x) / 2 + 18} ${(a.y + b.y) / 2 - 4} ${b.x} ${b.y - 6}`} fill="none" stroke="#fff" strokeWidth="0.9" strokeDasharray="2.2 2" strokeLinecap="round" vectorEffect="non-scaling-stroke" style={{ strokeWidth: 3 }} />}
         </svg>
         {b && <span className="plane" style={{ left: `${(a.x + b.x) / 2 + 9}%`, top: `${(a.y + b.y) / 2 + 1}%` }}><Icon name="plane" size={22} style={{ transform: "rotate(45deg)" }} /></span>}
         {t.stops.map((s) => (

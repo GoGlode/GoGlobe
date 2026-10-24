@@ -5,7 +5,7 @@ const SORTS: { id: Sort; label: string }[] = [{ id: "default", label: "Подх�
 
 export default function FilterBar({ value: f, onChange, shown, total }: { value: Filters; onChange: (f: Filters) => void; shown: number; total: number }) {
   const set = (p: Partial<Filters>) => onChange({ ...f, ...p });
-  const chip = (on: boolean, label: string, onClick: () => void) => <button type="button" className={`chip ${on ? "chip--active" : ""}`} aria-pressed={on} onClick={onClick}>{label}</button>;
+  const chip = (on: boolean, label: string, onClick: () => void) => <button key={label} type="button" className={`chip ${on ? "chip--active" : ""}`} aria-pressed={on} onClick={onClick}>{label}</button>;
   return (
     <div className="res__filters" role="group" aria-label="Фильтры и сортировка">
       <div className="scroll-x res__chips">
