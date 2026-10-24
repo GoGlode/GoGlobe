@@ -1,12 +1,15 @@
 // Результаты поиска: «Я подобрал N вариантов», карусель карточек, ✕ / ♥. Владелец: Frontend №2.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { money, plural } from "../../data/format";
 import type { Trip } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
 import { BookButton, SourceLine } from "../trip/OfferInfo";
-import { Icon, Photo } from "../../ui";
+import { SHARE_TEXT, shareTrip } from "../../data/share";
+import { Icon, Photo, useToast } from "../../ui";
+import FilterBar from "./FilterBar";
+import { NO_FILTERS, applyFilters, isFiltered, type Filters } from "./filters";
 import { ClarifyView, EmptyView, ErrorView, WarningsBanner } from "./StatusViews";
 import "./results.css";
 
@@ -14,11 +17,15 @@ const DOT = 9, PITCH = 17, MAX_BLOB = 62; // точка 9px + зазор 8px; п
 const LEAD = { k: 520, c: 30 }, TRAIL = { k: 60, c: 8.5 };
 
 export default function ResultsPage() {
-  const { trips, query, params, phase, status, clarifyingQuestion, warnings, run } = useSearch();
+  const { trips: all, query, params, phase, status, clarifyingQuestion, warnings, run } = useSearch();
   const { has, toggle } = useFavorites();
   const nav = useNavigate();
   const rail = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const { show, toast } = useToast();
+  const share = async (t: Trip) => { const m = SHARE_TEXT[await shareTrip(t)]; if (m) show(m); };
+  const trips = useMemo(() => applyFilters(all, filters), [all, filters]);
 
   // Капля-индикатор: два её края идут на пружинах разной жёсткости за положением прокрутки — капля вытягивается и собирается
   const blob = useRef<HTMLSpanElement>(null);
@@ -45,6 +52,7 @@ export default function ResultsPage() {
     P.raf = requestAnimationFrame(tick);
   };
   useEffect(() => () => cancelAnimationFrame(phys.current.raf), []);
+  useEffect(() => { setActive(0); phys.current.target = 0; rail.current?.scrollTo({ left: 0 }); runBlob(); }, [filters]); // другая выборка — начинаем с первой карточки
 
   useEffect(() => {
     const el = rail.current; if (!el) return;
@@ -63,10 +71,10 @@ export default function ResultsPage() {
 
   if (phase === "error") return <ErrorView onRetry={() => void run()} />;
   if (status === "needs_clarification") return <ClarifyView question={clarifyingQuestion} query={query} onAnswer={(q) => void run({ query: q, params })} />;
-  if (!trips.length) return <EmptyView />;
+  if (!all.length) return <EmptyView />;
 
   const chips = [{ icon: "calendar", t: params.dates ?? "Любые даты" }, { icon: "users", t: params.travelers ?? "1–2 человека" }, { icon: "tag", t: params.budget ?? "Любой бюджет" }] as const;
-  const cur = trips[Math.min(active, trips.length - 1)];
+  const cur = trips[Math.min(active, trips.length - 1)]; // при пустой выборке фильтров undefined
 
   return (
     <div className="res">
@@ -88,30 +96,38 @@ export default function ResultsPage() {
 
       <div className="res__bubble fade-up">
         <span className="res__avatar"><Icon name="sparkle" size={18} /></span>
-        <p className="glass">Я проанализировал ваши предпочтения и подобрал {trips.length} {plural(trips.length, "вариант", "варианта", "вариантов")} путешествий, которые идеально вам подходят.</p>
+        <p className="glass">Я проанализировал ваши предпочтения и подобрал {all.length} {plural(all.length, "вариант", "варианта", "вариантов")} путешествий, которые идеально вам подходят.</p>
       </div>
 
-      <div className="res__rail scroll-x" ref={rail}>
-        {trips.map((t, i) => <TripCard key={t.id} trip={t} index={i} total={trips.length} fav={has(t.id)} onFav={() => toggle(t.id)} onOpen={() => nav(`/trip/${t.id}`)} />)}
-      </div>
+      <FilterBar value={filters} onChange={setFilters} shown={trips.length} total={all.length} />
 
-      <div className="res__controls">
-        <button className="res__round" aria-label="Пропустить" onClick={() => go(Math.min(active + 1, trips.length - 1))}><Icon name="x" size={26} /></button>
-        <div className="res__dots" role="tablist"><span ref={blob} className="res__blob" aria-hidden="true" />{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} onClick={() => go(i)} />)}</div>
-        <button className={`res__round res__round--heart ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onClick={() => toggle(cur.id)}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
-      </div>
-      <p className="res__demo muted">Демо-данные: цены и фото ориентировочные</p>
+      {trips.length === 0 ? (
+        <p className="res__none">Под выбранные фильтры вариантов нет.<button type="button" className="btn btn--sm" onClick={() => setFilters(NO_FILTERS)}>Сбросить фильтры</button></p>
+      ) : (<>
+        <div className="res__rail scroll-x" ref={rail}>
+          {trips.map((t, i) => <TripCard key={t.id} trip={t} index={i} total={trips.length} fav={has(t.id)} onFav={() => toggle(t.id)} onShare={() => void share(t)} onOpen={() => nav(`/trip/${t.id}`)} />)}
+        </div>
+
+        <div className="res__controls">
+          <button className="res__round" aria-label="Пропустить" onClick={() => go(Math.min(active + 1, trips.length - 1))}><Icon name="x" size={26} /></button>
+          <div className="res__dots" role="tablist"><span ref={blob} className="res__blob" aria-hidden="true" />{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} onClick={() => go(i)} />)}</div>
+          <button className={`res__round res__round--heart ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onClick={() => toggle(cur.id)}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
+        </div>
+      </>)}
+      {all[0]?.demo && <p className="res__demo muted">Демо-данные: цены и фото ориентировочные</p>}
+      {toast}
     </div>
   );
 }
 
-function TripCard({ trip: t, index, total, fav, onFav, onOpen }: { trip: Trip; index: number; total: number; fav: boolean; onFav: () => void; onOpen: () => void }) {
+function TripCard({ trip: t, index, total, fav, onFav, onShare, onOpen }: { trip: Trip; index: number; total: number; fav: boolean; onFav: () => void; onShare: () => void; onOpen: () => void }) {
   return (
     <article className="tcard">
       <div className="tcard__img" onClick={onOpen} role="link" aria-label={t.title}>
         <Photo src={t.hero} pos={t.heroPos} alt={t.title} />
         <span className="tcard__count">{index + 1} / {total}</span>
-        <button className={`tcard__heart ${fav ? "is-on" : ""}`} aria-label="В избранное" onClick={(e) => { e.stopPropagation(); onFav(); }}><Icon name="heart" size={22} filled={fav} /></button>
+        <button className="tcard__heart tcard__share" aria-label="Поделиться ссылкой" onClick={(e) => { e.stopPropagation(); onShare(); }}><Icon name="share" size={20} /></button>
+        <button className={`tcard__heart ${fav ? "is-on" : ""}`} aria-label={fav ? "Убрать из избранного" : "В избранное"} onClick={(e) => { e.stopPropagation(); onFav(); }}><Icon name="heart" size={22} filled={fav} /></button>
       </div>
       <div className="tcard__body">
         <div onClick={onOpen} role="link" style={{ cursor: "pointer" }}>
