@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { SEARCH_STEPS } from "../../data/api";
 import { useSearch } from "../../state/SearchContext";
 import { Icon } from "../../ui";
+import { TripSkeleton } from "./StatusViews";
 import "./progress.css";
 
 export default function ProgressView() {
@@ -35,6 +36,7 @@ export default function ProgressView() {
           </li>
         ))}
       </ol>
+      <TripSkeleton />
       <p className="prog__demo">Демонстрационный режим — тестовые данные</p>
     </div>
   );
