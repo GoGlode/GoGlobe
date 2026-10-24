@@ -1,19 +1,20 @@
 // Результаты поиска: «Я подобрал N вариантов», карусель карточек, ✕ / ♥. Владелец: Frontend №2.
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { money } from "../../data/format";
+import { money, plural } from "../../data/format";
 import type { Trip } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
 import { BookButton, SourceLine } from "../trip/OfferInfo";
 import { Icon, Photo } from "../../ui";
+import { ClarifyView, EmptyView, ErrorView, WarningsBanner } from "./StatusViews";
 import "./results.css";
 
 const DOT = 9, PITCH = 17, MAX_BLOB = 62; // точка 9px + зазор 8px; предельная длина капли
 const LEAD = { k: 520, c: 30 }, TRAIL = { k: 60, c: 8.5 };
 
 export default function ResultsPage() {
-  const { trips, query, params, phase, run } = useSearch();
+  const { trips, query, params, phase, status, clarifyingQuestion, warnings, run } = useSearch();
   const { has, toggle } = useFavorites();
   const nav = useNavigate();
   const rail = useRef<HTMLDivElement>(null);
@@ -60,12 +61,9 @@ export default function ResultsPage() {
 
   const go = (i: number) => { const el = rail.current; const c = el?.children[i] as HTMLElement | undefined; if (el && c) el.scrollTo({ left: i * (c.offsetWidth + 12), behavior: "smooth" }); };
 
-  if (phase === "error") return (
-    <div className="page res-empty"><h2>Что-то пошло не так</h2><p className="muted">Не удалось получить подборку. Попробуйте ещё раз.</p><button className="btn" onClick={() => void run()}>Повторить</button></div>
-  );
-  if (!trips.length) return (
-    <div className="page res-empty"><h2>Ничего не нашли</h2><p className="muted">Попробуйте увеличить бюджет или изменить даты.</p><Link className="btn" to="/">Изменить запрос</Link></div>
-  );
+  if (phase === "error") return <ErrorView onRetry={() => void run()} />;
+  if (status === "needs_clarification") return <ClarifyView question={clarifyingQuestion} query={query} onAnswer={(q) => void run({ query: q, params })} />;
+  if (!trips.length) return <EmptyView />;
 
   const chips = [{ icon: "calendar", t: params.dates ?? "Любые даты" }, { icon: "users", t: params.travelers ?? "1–2 человека" }, { icon: "tag", t: params.budget ?? "Любой бюджет" }] as const;
   const cur = trips[Math.min(active, trips.length - 1)];
@@ -86,9 +84,11 @@ export default function ResultsPage() {
         {chips.map((c) => <span key={c.t} className="chip"><Icon name={c.icon} size={16} />{c.t}</span>)}
       </div>
 
+      {status === "partial" && <WarningsBanner warnings={warnings} />}
+
       <div className="res__bubble fade-up">
         <span className="res__avatar"><Icon name="sparkle" size={18} /></span>
-        <p className="glass">Я проанализировал ваши предпочтения и подобрал {trips.length} {trips.length === 1 ? "вариант" : "вариантов"} путешествий, которые идеально вам подходят.</p>
+        <p className="glass">Я проанализировал ваши предпочтения и подобрал {trips.length} {plural(trips.length, "вариант", "варианта", "вариантов")} путешествий, которые идеально вам подходят.</p>
       </div>
 
       <div className="res__rail scroll-x" ref={rail}>
