@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { money } from "../../../data/format";
 import type { Trip } from "../../../data/types";
 import { useFavorites } from "../../../state/FavoritesContext";
-import { Icon, Photo } from "../../../ui";
+import { SHARE_TEXT, shareTrip } from "../../../data/share";
+import { Icon, Photo, useToast } from "../../../ui";
 import { BookButton, ProsCons, SourceLine } from "../OfferInfo";
 import TripTabs from "../TripTabs";
 
@@ -11,7 +12,8 @@ export default function OverviewTab({ trip: t }: { trip: Trip }) {
   const nav = useNavigate();
   const { has, toggle } = useFavorites();
   const fav = has(t.id);
-  const share = async () => { try { await navigator.share?.({ title: t.title, url: location.href }); } catch { /* отмена */ } };
+  const { show, toast } = useToast();
+  const share = async () => { const m = SHARE_TEXT[await shareTrip(t)]; if (m) show(m); };
   return (
     <>
       <div className="thero">
@@ -51,6 +53,7 @@ export default function OverviewTab({ trip: t }: { trip: Trip }) {
           <Link className="btn btn--ghost" to={`/trip/${t.id}/itinerary`}>Смотреть маршрут <Icon name="arrow-right" size={20} /></Link>
         </div>
       </div>
+      {toast}
     </>
   );
 }
