@@ -3,6 +3,8 @@
 import type { Flight, Hotel, Trip } from "./types";
 
 const IMG = "/assets/photos/"; // Wikimedia Commons, авторы — data/photoCredits.ts
+/** Дата «снимка» демо-данных — показывается как «данные от …». */
+const DEMO_DATE = "2025-04-28T10:00:00Z";
 const usd = (amount: number) => ({ amount, currency: "USD" as const });
 
 const flights: Flight[] = [
@@ -44,6 +46,13 @@ const greece: Trip = {
     { day: 6, date: "17 мая", title: "Свободный день", photo: IMG + "greece-4.jpg", items: [{ icon: "spa", label: "Спа в отеле" }, { icon: "pin", label: "Прогулка по Фире" }] },
     { day: 7, date: "18 мая", title: "Вылет домой", photo: IMG + "greece-2.jpg", items: [{ icon: "car", label: "Трансфер в аэропорт" }, { icon: "plane", label: "Перелёт домой" }] },
   ],
+  explanation: {
+    why: ["Вы хотели пляжи, природу и комфортный бюджет", "Санторини даёт виды и атмосферу, Афины — культурные впечатления", "Маршрут укладывается в бюджет"],
+    pros: ["Прямой рейс из Москвы", "Отели 4–5★ с завтраком", "Тёплое море и мало дождей в мае"],
+    cons: ["Высокий сезон на Санторини — цены выше", "Переезд между островами зависит от погоды"],
+    sources: ["Демо-данные GoGlobe"], confidence: "estimated",
+  },
+  dataFreshness: DEMO_DATE, demo: true,
   hotels, cities: ["Афины", "Санторини"], flights,
   stops: [{ city: "Афины", days: "Дни 1–3", photo: IMG + "greece-2.jpg", x: 30, y: 17 }, { city: "Санторини", days: "Дни 4–7", photo: IMG + "hero.jpg", x: 68, y: 60 }],
 };
@@ -55,20 +64,26 @@ function lite(p: { id: string; country: string; title: string; summary: string; 
     { id: `${p.id}-h2`, city: p.city, name: `${p.city} Boutique`, rating: 4.5, reviews: 96, location: p.place, photo: IMG + `${p.id}-2.jpg`, amenities: [{ icon: "coffee", label: "Завтрак" }, { icon: "spa", label: "Спа" }], pricePerNight: usd(160), tags: ["boutique"] },
   ];
   return {
-    ...greece, id: p.id, country: p.country, title: p.title, summary: p.summary, why: p.why, days: p.days, dates: p.dates, dateRange: p.range, price: usd(p.price),
+    ...greece, id: p.id, country: p.country, title: p.title, summary: p.summary, why: p.why,
+    explanation: { why: [p.why], pros: [`${p.days} дней в рамках бюджета`, "Отели 4–5★ в выдаче"], cons: ["Подробный маршрут уточняется"], sources: ["Демо-данные GoGlobe"], confidence: "estimated" }, days: p.days, dates: p.dates, dateRange: p.range, price: usd(p.price),
     hero: p.img, photos: [1, 2, 3, 4].map((n, i) => ({ src: IMG + `${p.id}-${n}.jpg`, label: i === 0 ? p.city : ["Главные места", "Природа", "Виды"][i - 1] })),
     itinerary: greece.itinerary.slice(0, 4).map((d, i) => ({ ...d, photo: i === 0 ? p.img : IMG + `${p.id}-${i}.jpg` })), hotels: h, cities: [p.city], flights: [flights[0]],
     stops: [{ city: p.city, days: `Дни 1–${p.days}`, photo: p.img, x: 50, y: 40 }],
   };
 }
 
-export const TRIPS: Trip[] = [
+const BASE: Trip[] = [
   greece,
   lite({ id: "thailand", country: "Таиланд", title: "Таиланд: Пхукет и Краби", summary: "Пляжи, тропическая природа и расслабленный отдых у тёплого моря.", why: "Тёплое море и пляжи в рамках бюджета; много природы и спокойных локаций.", days: 8, dates: "10 – 17 мая 2025", range: ["2025-05-10", "2025-05-17"], price: 1240, img: IMG + "thailand-cover.jpg", city: "Пхукет", place: "Карон, Пхукет" }),
   lite({ id: "italy", country: "Италия", title: "Италия: Рим и Амальфи", summary: "История Рима и побережье Амальфи: культура, гастрономия и море.", why: "Сочетание культуры и гастрономии с отдыхом у моря; маршрут укладывается в бюджет.", days: 8, dates: "3 – 10 июня 2025", range: ["2025-06-03", "2025-06-10"], price: 1380, img: IMG + "italy-cover.jpg", city: "Амальфи", place: "Амальфи" }),
   lite({ id: "japan", country: "Япония", title: "Япония: Токио и Киото", summary: "Современные кварталы Токио и древние храмы Киото.", why: "Культурная программа и природа, вы просили необычный маршрут.", days: 9, dates: "14 – 22 мая 2025", range: ["2025-05-14", "2025-05-22"], price: 1490, img: IMG + "japan-cover.jpg", city: "Киото", place: "Гион, Киото" }),
   lite({ id: "bali", country: "Индонезия", title: "Бали: Убуд и побережье", summary: "Храмы на воде, рисовые террасы и закаты над океаном.", why: "Природа и культура в одной поездке, тёплый океан и много вариантов жилья в рамках бюджета.", days: 9, dates: "8 – 16 мая 2025", range: ["2025-05-08", "2025-05-16"], price: 1350, img: IMG + "bali-cover.jpg", city: "Убуд", place: "Убуд, Бали" }),
 ];
+
+/** Звёзды лучшего отеля и прямой рейс — для фильтров выдачи (у реальных данных приходят из Offer). */
+const STARS: Record<string, number> = { greece: 5, thailand: 4, italy: 5, japan: 4, bali: 5 };
+const LONG_HAUL = ["japan", "bali"]; // пересадка в демо
+export const TRIPS: Trip[] = BASE.map((t) => ({ ...t, stars: STARS[t.id], direct: !LONG_HAUL.includes(t.id) }));
 
 export const getTrip = (id?: string) => TRIPS.find((t) => t.id === id);
 

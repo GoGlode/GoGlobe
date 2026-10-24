@@ -3,7 +3,16 @@ import type { Money } from "./types";
 const SYM = { USD: "$", RUB: "₽", EUR: "€" } as const;
 export function money(m: Money): string {
   const n = Math.round(m.amount).toLocaleString("ru-RU").replace(/ /g, " ");
-  return m.currency === "RUB" ? `${n} ₽` : `${SYM[m.currency]}${n}`;
+  if (m.currency === "RUB") return `${n} ₽`;
+  const sym = SYM[m.currency as keyof typeof SYM];
+  return sym ? `${sym}${n}` : `${n} ${m.currency}`; // неизвестная валюта из API — код после суммы, без выдуманного символа
+}
+
+const longDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/** «данные от 28 апреля 2025» по ISO-дате/времени (Offer.data_freshness); без валидной даты — честное «дата данных неизвестна» */
+export function freshnessLabel(iso?: string): string {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? "дата данных неизвестна" : `данные от ${longDate.format(t)}`;
 }
 
 /** «1 человек / 2 человека / 5 человек» */
@@ -18,6 +27,7 @@ const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "sho
 /** «10–16 нояб.» / «28 нояб. – 3 дек.» по датам YYYY-MM-DD */
 export function dateRange(from: string, to: string): string {
   const a = new Date(`${from}T00:00:00Z`), b = new Date(`${to}T00:00:00Z`);
+  if (from === to) return shortDate.format(a);
   if (a.getUTCMonth() === b.getUTCMonth() && a.getUTCFullYear() === b.getUTCFullYear()) return `${a.getUTCDate()}–${shortDate.format(b)}`;
   return `${shortDate.format(a)} – ${shortDate.format(b)}`;
 }
