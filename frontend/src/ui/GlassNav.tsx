@@ -13,6 +13,30 @@ const ITEMS = [
   { to: "/history", icon: "nav-history", label: "История" },
 ];
 
+// Фирменная иконка AI-поиска (как public/assets/icons/search-sparkle-nav.svg), но инлайном — чтобы звёзды мерцали отдельно от лупы
+function SearchIcon({ size }: { size: number }) {
+  return (
+    <svg className="nav-search-ic" width={size} height={size} viewBox="0 0 64 64" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="5.2" strokeLinecap="round"><circle cx="30" cy="30.5" r="19.4" /><path d="M44 44.5 56.5 57" /></g>
+      <path className="nav-search-ic__star" d="M30 19.5C31.05 27.25 33.24 29.45 41 30.5C33.24 31.55 31.05 33.74 30 41.5C28.95 33.74 26.75 31.55 19 30.5C26.75 29.45 28.95 27.25 30 19.5Z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
+      <path className="nav-search-ic__spark" d="M10.5 1.7C11.13 6.35 12.45 7.67 17.1 8.3C12.45 8.93 11.13 10.25 10.5 14.9C9.87 10.25 8.55 8.93 3.9 8.3C8.55 7.67 9.87 6.35 10.5 1.7Z" fill="currentColor" stroke="currentColor" strokeWidth="0.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Контурные иконки инлайном: при выборе пункта их линии «дорисовываются» (stroke-dashoffset, см. glassnav.css)
+function DrawIcon({ name, size }: { name: "nav-favorites" | "nav-profile" | "nav-calendar" | "nav-history"; size: number }) {
+  return (
+    <svg className="nav-draw" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {name === "nav-favorites" ? <path pathLength={1} d="M32 54 10.5 33.5C-2 20 16 4 29 16l3 3 3-3C48 4 66 20 53.5 33.5Z" />
+        : name === "nav-profile" ? <><path pathLength={1} d="M21 20a11 11 0 1 1 22 0a11 11 0 1 1-22 0" /><path className="nav-draw__2" pathLength={1} d="M10 56c1.5-12 9.5-18 22-18s20.5 6 22 18Z" /></>
+        : name === "nav-history" ? <><path pathLength={1} d="M11 25A22 22 0 1 1 10 38" /><path className="nav-draw__2" pathLength={1} d="M9 12v14h14" /><path className="nav-draw__3" pathLength={1} d="M32 17v16l11 7" /></>
+        : <><rect pathLength={1} x="9" y="13" width="46" height="42" rx="6" /><path className="nav-draw__2" pathLength={1} d="M9 25h46" /><path className="nav-draw__3" pathLength={1} d="M20 7v12M44 7v12" />
+          <path className="nav-draw__dots" d="M20 34h1M32 34h1M44 34h1M20 44h1M32 44h1M44 44h1" strokeWidth="5" /></>}
+    </svg>
+  );
+}
+
 type Box = { l: number; r: number; h: number };
 // Пружины: ведущий край упругий, ведомый — мягче и медленнее
 const LEAD = { k: 420, c: 27 };
@@ -143,7 +167,7 @@ export default function GlassNav() {
         return (
           <NavLink key={it.to} to={it.to} draggable={false} aria-label={it.label} aria-current={active ? "page" : undefined}
             className={`glassnav__item ${it.center ? "glassnav__item--center" : ""} ${active ? "is-active" : ""}`}>
-            <MaskIcon src={it.icon} size={it.center ? 34 : 26} />
+            {it.center ? <SearchIcon size={34} /> : it.icon === "nav-favorites" || it.icon === "nav-profile" || it.icon === "nav-calendar" || it.icon === "nav-history" ? <DrawIcon name={it.icon} size={26} /> : <MaskIcon src={it.icon} size={26} />}
           </NavLink>
         );
       })}
