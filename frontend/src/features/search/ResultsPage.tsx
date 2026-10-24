@@ -8,6 +8,9 @@ import { useSearch } from "../../state/SearchContext";
 import { Icon, Photo } from "../../ui";
 import "./results.css";
 
+const DOT = 9, PITCH = 17, MAX_BLOB = 62; // точка 9px + зазор 8px; предельная длина капли
+const LEAD = { k: 520, c: 30 }, TRAIL = { k: 60, c: 8.5 };
+
 export default function ResultsPage() {
   const { trips, query, params, phase, run } = useSearch();
   const { has, toggle } = useFavorites();
@@ -15,9 +18,41 @@ export default function ResultsPage() {
   const rail = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
+  // Капля-индикатор: два её края идут на пружинах разной жёсткости за положением прокрутки — капля вытягивается и собирается
+  const blob = useRef<HTMLSpanElement>(null);
+  const phys = useRef({ target: 0, l: 0, r: DOT, vl: 0, vr: 0, raf: 0 });
+  const runBlob = () => {
+    const P = phys.current;
+    if (P.raf) return;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.032, (now - last) / 1000); last = now;
+      const tl = P.target * PITCH, tr = tl + DOT;
+      const rightLeads = (tl + tr) / 2 >= (P.l + P.r) / 2;
+      const sl = rightLeads ? TRAIL : LEAD, sr = rightLeads ? LEAD : TRAIL;
+      P.vl += (sl.k * (tl - P.l) - sl.c * P.vl) * dt; P.l += P.vl * dt;
+      P.vr += (sr.k * (tr - P.r) - sr.c * P.vr) * dt; P.r += P.vr * dt;
+      if (P.r - P.l > MAX_BLOB) { if (rightLeads) P.l = P.r - MAX_BLOB; else P.r = P.l + MAX_BLOB; }
+      const w = Math.max(DOT * 0.7, P.r - P.l);
+      const el = blob.current;
+      if (el) { el.style.translate = `${P.l}px -50%`; el.style.width = `${w}px`; el.style.height = `${DOT / (1 + Math.max(0, w / DOT - 1) * 0.08)}px`; }
+      const calm = Math.abs(tl - P.l) < 0.05 && Math.abs(tr - P.r) < 0.05 && Math.abs(P.vl) < 0.05 && Math.abs(P.vr) < 0.05;
+      if (calm) { P.l = tl; P.r = tr; P.vl = P.vr = 0; P.raf = 0; if (el) { el.style.translate = `${tl}px -50%`; el.style.width = `${DOT}px`; el.style.height = `${DOT}px`; } return; }
+      P.raf = requestAnimationFrame(tick);
+    };
+    P.raf = requestAnimationFrame(tick);
+  };
+  useEffect(() => () => cancelAnimationFrame(phys.current.raf), []);
+
   useEffect(() => {
     const el = rail.current; if (!el) return;
-    const on = () => { const card = el.children[0] as HTMLElement | undefined; if (card) setActive(Math.round(el.scrollLeft / (card.offsetWidth + 12))); };
+    const on = () => {
+      const card = el.children[0] as HTMLElement | undefined; if (!card) return;
+      const p = el.scrollLeft / (card.offsetWidth + 12);
+      setActive(Math.round(p));
+      phys.current.target = Math.min(Math.max(p, 0), Math.max(0, trips.length - 1));
+      runBlob();
+    };
     el.addEventListener("scroll", on, { passive: true });
     return () => el.removeEventListener("scroll", on);
   }, [trips.length]);
@@ -61,7 +96,7 @@ export default function ResultsPage() {
 
       <div className="res__controls">
         <button className="res__round" aria-label="Пропустить" onClick={() => go(Math.min(active + 1, trips.length - 1))}><Icon name="x" size={26} /></button>
-        <div className="res__dots" role="tablist">{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} className={i === active ? "on" : ""} onClick={() => go(i)} />)}</div>
+        <div className="res__dots" role="tablist"><span ref={blob} className="res__blob" aria-hidden="true" />{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} onClick={() => go(i)} />)}</div>
         <button className={`res__round res__round--heart ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onClick={() => toggle(cur.id)}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
       </div>
       <p className="res__demo muted">Демо-данные: цены и фото ориентировочные</p>

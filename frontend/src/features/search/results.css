@@ -32,11 +32,14 @@
 .tcard__why > span { color: var(--c-primary); flex: none; }
 .tcard__why b { display: block; margin-bottom: 2px; font-size: 14px; }
 .tcard__why p { color: #46587a; }
-.res__controls { display: flex; align-items: center; justify-content: center; gap: 28px; position: sticky; bottom: 10px; padding: 6px 0; }
+.res__controls { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 0 4px; }
 .res__round { width: 62px; height: 62px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-md); display: grid; place-items: center; color: var(--c-navy); }
 .res__round--heart { color: var(--c-danger); }
-.res__dots { display: flex; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255, 255, 255, .6); }
-.res__dots button { width: 9px; height: 9px; border-radius: 50%; background: #c5d4ea; }
-.res__dots button.on { background: var(--c-primary); width: 22px; border-radius: 6px; }
+.res__dots { position: relative; display: flex; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255, 255, 255, .6); }
+.res__dots button { position: relative; z-index: 1; width: 9px; height: 9px; border-radius: 50%; background: #c5d4ea; transition: transform .3s; }
+.res__dots button:active { transform: scale(.8); }
+/* Синяя капля поверх серых точек; положение и размер задаёт физика в ResultsPage.tsx */
+.res__blob { position: absolute; z-index: 2; left: 12px; top: 50%; width: 9px; height: 9px; translate: 0 -50%; border-radius: 999px; background: var(--c-primary);
+  box-shadow: 0 0 0 .6px var(--c-primary), 0 2px 8px rgba(7, 135, 249, .45), inset 0 1px 0 rgba(255, 255, 255, .5); pointer-events: none; }
 .res__demo { font-size: 12px; text-align: center; }
 .res-empty { text-align: center; margin-top: 120px; display: grid; gap: 14px; justify-items: center; }

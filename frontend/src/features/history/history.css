@@ -1,4 +1,4 @@
-.hist { position: relative; min-height: 100%; padding: 0 var(--s-4) 16px; display: grid; gap: 12px; align-content: start; background: #fff; }
+.hist { position: relative; min-height: 100%; padding: 0 var(--s-4) 16px; display: grid; gap: 12px; align-content: start; }
 .hist__top { position: relative; padding-top: 14px; }
 .hist__logo { height: 30px; width: auto; }
 .hist__title { position: relative; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; margin-top: 8px; }
