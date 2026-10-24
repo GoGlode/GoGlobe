@@ -4,6 +4,7 @@ import { money } from "../../../data/format";
 import type { Trip } from "../../../data/types";
 import { useFavorites } from "../../../state/FavoritesContext";
 import { Icon, Photo } from "../../../ui";
+import { BookButton, ProsCons, SourceLine } from "../OfferInfo";
 import TripTabs from "../TripTabs";
 
 export default function OverviewTab({ trip: t }: { trip: Trip }) {
@@ -40,10 +41,15 @@ export default function OverviewTab({ trip: t }: { trip: Trip }) {
         <div className="tinc">{t.includes.map((x) => <div key={x.title}><Icon name={x.icon} size={26} /><span>{x.title}</span><small>{x.sub}</small></div>)}</div>
         <h3>Почему этот вариант</h3>
         <div className="treasons">{t.reasons.map((r) => <div key={r.text}><Icon name={r.icon} size={22} /><span>{r.text}</span></div>)}</div>
-        <h3>Ключевые места</h3>
-        <div className="scroll-x tplaces">{t.photos.map((p) => <div className="tplace" key={p.label}><Photo src={p.src} pos={p.pos} alt={p.label} /><span>{p.label}</span></div>)}</div>
-        <p className="muted tdemo">Демо-данные: цены, рейтинги и фото ориентировочные</p>
-        <div className="tcta"><Link className="btn" to={`/trip/${t.id}/itinerary`}>Смотреть маршрут <Icon name="arrow-right" size={20} /></Link></div>
+        <ProsCons trip={t} />
+        <SourceLine trip={t} />
+        {t.photos.length > 0 && <h3>Ключевые места</h3>}
+        {t.photos.length > 0 && <div className="scroll-x tplaces">{t.photos.map((p) => <div className="tplace" key={p.label}><Photo src={p.src} pos={p.pos} alt={p.label} /><span>{p.label}</span></div>)}</div>}
+        {t.demo && <p className="muted tdemo">Демо-данные: цены, рейтинги и фото ориентировочные</p>}
+        <div className="tcta">
+          <BookButton trip={t} />
+          <Link className="btn btn--ghost" to={`/trip/${t.id}/itinerary`}>Смотреть маршрут <Icon name="arrow-right" size={20} /></Link>
+        </div>
       </div>
     </>
   );
