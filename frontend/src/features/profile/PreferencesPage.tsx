@@ -24,7 +24,10 @@ export default function PreferencesPage() {
   const toggleDir = (id: DirectionId) => setDraft((d) => ({
     ...d, directions: d.directions.includes(id) ? d.directions.filter((x) => x !== id) : [...d.directions, id],
   }));
-  const setOne = (key: Single, id: string) => setDraft((d) => ({ ...d, [key]: d[key] === id ? undefined : id }));
+  const toggle = (key: Single, id: string) => setDraft((d) => {
+    const cur = d[key] as string[];
+    return { ...d, [key]: cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id] };
+  });
   const changed = JSON.stringify(draft) !== JSON.stringify(prefs);
   const save = () => {
     if (!savePrefs(draft)) return setError("Не удалось сохранить: хранилище браузера недоступно. Предпочтения не изменены.");
@@ -50,11 +53,11 @@ export default function PreferencesPage() {
         </section>
         {GROUPS.map((g) => (
           <section key={g.key}>
-            <h2 className="prof-sub">{g.title}</h2>
+            <h2 className="prof-sub">{g.title} <small className="muted">можно несколько</small></h2>
             <div className="prof-chips" role="group" aria-label={g.title}>
               {g.options.map((o) => (
-                <button key={o.id} type="button" className={`chip ${draft[g.key] === o.id ? "chip--active" : ""}`} aria-pressed={draft[g.key] === o.id}
-                  onClick={() => setOne(g.key, o.id)}>{o.label}</button>
+                <button key={o.id} type="button" className={`chip ${(draft[g.key] as string[]).includes(o.id) ? "chip--active" : ""}`} aria-pressed={(draft[g.key] as string[]).includes(o.id)}
+                  onClick={() => toggle(g.key, o.id)}>{o.label}</button>
               ))}
             </div>
           </section>

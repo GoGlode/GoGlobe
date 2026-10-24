@@ -91,7 +91,7 @@ export default function ProfilePage() {
             </>}
             {summary.length > 0 && (
               <div className="prof-prefs">
-                {summary.map((x) => <div key={x.title}><span className="prof-prefs__ic"><Icon name={x.icon} size={20} /></span><span><small>{x.title}</small><b>{x.value}</b></span></div>)}
+                {summary.map((x) => <div key={x.title}><span className="prof-prefs__ic"><Icon name={x.icon} size={20} /></span><span><small>{x.title}</small><span className="prof-prefs__vals">{x.value!.split(", ").map((v) => <b key={v}>{v}</b>)}</span></span></div>)}
               </div>
             )}
           </>

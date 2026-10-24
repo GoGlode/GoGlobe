@@ -8,3 +8,16 @@
 .ttab { padding: 9px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 500; background: var(--c-chip); color: var(--c-navy); }
 .ttab.is-on { background: var(--grad-primary); color: #fff; box-shadow: var(--shadow-glow); }
 .tdemo { text-align: center; font-size: 12px; margin-top: 12px; }
+
+/* Выпадающий список городов (ui/CityInput.tsx) */
+.city-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; min-width: 230px; max-width: calc(100vw - 32px); max-height: 252px; overflow-y: auto; margin: 0; padding: 6px; list-style: none;
+  border-radius: 20px; background: rgba(255, 255, 255, .94); -webkit-backdrop-filter: blur(20px) saturate(1.7); backdrop-filter: blur(20px) saturate(1.7);
+  box-shadow: 0 16px 36px -10px rgba(30, 90, 180, .35), 0 2px 6px rgba(16, 36, 72, .08), inset 0 0 0 1px rgba(255, 255, 255, .9); overscroll-behavior: contain; animation: city-menu-in .16s ease-out; }
+.fl-grid--route > .fl-field:last-child .city-menu { left: auto; right: 0; }
+.city-menu__item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 14px; color: var(--c-navy); font-size: 15px; font-weight: 500; cursor: pointer; }
+.city-menu__item svg { flex: none; color: var(--c-primary); }
+.city-menu__item span { flex: 1; min-width: 0; }
+.city-menu__item small { flex: none; padding: 2px 8px; border-radius: 999px; background: #e3f0ff; color: var(--c-primary-dark); font-size: 12px; font-weight: 600; }
+.city-menu__item.is-cursor { background: #eaf3ff; }
+.city-menu__empty { padding: 12px; color: var(--c-muted); font-size: 14px; }
+@keyframes city-menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: none; } }

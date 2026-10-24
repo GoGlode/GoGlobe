@@ -1,6 +1,7 @@
 // «Данные на устройстве»: что GoGlobe хранит в этом браузере, и удаление всех этих данных.
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { prefCount } from "../../data/preferences";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useHistory } from "../../state/HistoryContext";
 import { useProfile } from "../../state/ProfileContext";
@@ -17,10 +18,10 @@ export default function DeviceDataPage() {
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const prefCount = prefs.directions.length + ["budget", "style", "stay", "cabin", "pace"].filter((k) => prefs[k as keyof typeof prefs]).length;
+  const count = prefCount(prefs);
   const rows = [
     { icon: "user" as const, t: "Профиль", v: profile.name || profile.avatar ? "имя и фото заданы" : "не заполнен" },
-    { icon: "sparkle" as const, t: "Предпочтения", v: prefCount ? `${prefCount} выбрано` : "не указаны" },
+    { icon: "sparkle" as const, t: "Предпочтения", v: count ? `${count} выбрано` : "не указаны" },
     { icon: "heart" as const, t: "Избранное", v: `${ids.length}` },
     { icon: "clock" as const, t: "Ваши запросы в истории", v: `${entries.filter((e) => !e.demo).length}` },
   ];

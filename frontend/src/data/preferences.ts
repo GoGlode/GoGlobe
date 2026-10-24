@@ -20,24 +20,39 @@ export const CABIN_PREFS: readonly { id: CabinClass; label: string }[] = [{ id: 
 export const PACES = [{ id: "calm", label: "Спокойный" }, { id: "busy", label: "Насыщенный" }] as const;
 
 export type DirectionId = (typeof DIRECTIONS)[number]["id"];
+/** Во всех категориях можно выбрать несколько вариантов сразу. */
 export interface TravelPrefs {
   directions: DirectionId[];
-  budget?: (typeof BUDGETS)[number]["id"];
-  style?: (typeof STYLES)[number]["id"];
-  stay?: (typeof STAYS)[number]["id"];
-  cabin?: CabinClass;
-  pace?: (typeof PACES)[number]["id"];
+  budget: (typeof BUDGETS)[number]["id"][];
+  style: (typeof STYLES)[number]["id"][];
+  stay: (typeof STAYS)[number]["id"][];
+  cabin: CabinClass[];
+  pace: (typeof PACES)[number]["id"][];
 }
-export const EMPTY_PREFS: TravelPrefs = { directions: [] };
+export const EMPTY_PREFS: TravelPrefs = { directions: [], budget: [], style: [], stay: [], cabin: [], pace: [] };
 
-/** Строки краткой сводки предпочтений: [иконка, подпись, значение | null]. */
+/** Сколько вариантов выбрано всего. */
+export const prefCount = (p: TravelPrefs) => Object.values(p).reduce((n, v) => n + v.length, 0);
+
+/** Приводит сохранённое значение к актуальному виду: раньше в категориях хранился один вариант (строка), теперь список. */
+export function normalizePrefs(raw: unknown): TravelPrefs {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : typeof v === "string" ? [v] : []);
+  return {
+    directions: list(r.directions) as DirectionId[], budget: list(r.budget) as TravelPrefs["budget"], style: list(r.style) as TravelPrefs["style"],
+    stay: list(r.stay) as TravelPrefs["stay"], cabin: list(r.cabin) as CabinClass[], pace: list(r.pace) as TravelPrefs["pace"],
+  };
+}
+
+/** Строки краткой сводки предпочтений: [иконка, подпись, значения через запятую | null]. */
 export function prefSummary(p: TravelPrefs): { icon: IconName; title: string; value: string | null }[] {
-  const label = <T extends { id: string; label: string }>(list: readonly T[], id?: string) => list.find((x) => x.id === id)?.label ?? null;
+  const labels = <T extends { id: string; label: string }>(list: readonly T[], ids: readonly string[]) =>
+    list.filter((x) => ids.includes(x.id)).map((x) => x.label).join(", ") || null;
   return [
-    { icon: "wallet", title: "Бюджет", value: label(BUDGETS, p.budget) },
-    { icon: "users", title: "Стиль", value: label(STYLES, p.style) },
-    { icon: "bed", title: "Тип проживания", value: label(STAYS, p.stay) },
-    { icon: "plane", title: "Класс перелёта", value: label(CABIN_PREFS, p.cabin) },
-    { icon: "sun", title: "Темп путешествия", value: label(PACES, p.pace) },
+    { icon: "wallet", title: "Бюджет", value: labels(BUDGETS, p.budget) },
+    { icon: "users", title: "Стиль", value: labels(STYLES, p.style) },
+    { icon: "bed", title: "Тип проживания", value: labels(STAYS, p.stay) },
+    { icon: "plane", title: "Класс перелёта", value: labels(CABIN_PREFS, p.cabin) },
+    { icon: "sun", title: "Темп путешествия", value: labels(PACES, p.pace) },
   ];
 }

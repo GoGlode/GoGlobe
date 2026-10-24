@@ -2,7 +2,7 @@
 // Авторизации и API профиля в проекте нет, поэтому данные хранятся только в localStorage этого устройства.
 // Никаких персональных данных по умолчанию: пустое имя = «Гость».
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { EMPTY_PREFS, type TravelPrefs } from "../data/preferences";
+import { EMPTY_PREFS, normalizePrefs, type TravelPrefs } from "../data/preferences";
 
 const KEY = "goglobe.profile.v1";
 export interface LocalProfile { name: string; avatar: string | null }
@@ -25,7 +25,7 @@ function load(): { data: Stored; error: boolean } {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { data: EMPTY, error: false };
     const s = JSON.parse(raw);
-    return { data: { profile: { ...EMPTY.profile, ...s.profile }, prefs: { ...EMPTY_PREFS, ...s.prefs } }, error: false };
+    return { data: { profile: { ...EMPTY.profile, ...s.profile }, prefs: normalizePrefs(s.prefs) }, error: false };
   } catch {
     return { data: EMPTY, error: true };
   }

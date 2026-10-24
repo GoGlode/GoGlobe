@@ -10,7 +10,7 @@ import {
 import { money, plural } from "../../data/format";
 import { MY_TRIPS } from "../../data/trips";
 import type { Trip } from "../../data/types";
-import { Icon, PageHeader } from "../../ui";
+import { CityInput, Icon, PageHeader, type CityOption } from "../../ui";
 import TripTabs from "../trip/TripTabs";
 import "./flights.css";
 
@@ -22,6 +22,7 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]["id"];
 const MAX_LEGS = 4, MAX_ADULTS = 9;
+const CITY_OPTIONS: CityOption[] = AIRPORTS.map((a) => ({ key: a.code, label: airportLabel(a), city: a.city, code: a.code }));
 const CHOSEN_KEY = "goglobe.flights.chosen.v1";
 
 interface LegForm { from: string; to: string; date: string }
@@ -150,7 +151,6 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
         </div>
 
         <form ref={formRef} className="fl-form" noValidate onSubmit={(e) => { e.preventDefault(); submit(); }}>
-          <datalist id="fl-airports">{AIRPORTS.map((a) => <option key={a.code} value={airportLabel(a)} />)}</datalist>
           {(mode === "multi" ? legs : [legs[0]]).map((l, i) => (
             <div key={i} className="fl-leg">
               {mode === "multi" && (
@@ -160,10 +160,10 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
               )}
               <div className="fl-grid fl-grid--route">
                 <label className="fl-field"><Icon name="pin" size={22} /><span className="visually-hidden">Откуда</span>
-                  <input list="fl-airports" placeholder="Откуда" value={l.from} onChange={(e) => setLeg(i, { from: e.target.value })} /></label>
+                  <CityInput placeholder="Откуда" options={CITY_OPTIONS} value={l.from} onChange={(v) => setLeg(i, { from: v })} /></label>
                 <button type="button" className="fl-swap" aria-label="Поменять города местами" onClick={() => swap(i)}><Icon name="swap" size={16} stroke={2.2} /></button>
                 <label className="fl-field"><Icon name="pin" size={22} /><span className="visually-hidden">Куда</span>
-                  <input list="fl-airports" placeholder="Куда" value={l.to} onChange={(e) => setLeg(i, { to: e.target.value })} /></label>
+                  <CityInput placeholder="Куда" options={CITY_OPTIONS} value={l.to} onChange={(v) => setLeg(i, { to: v })} /></label>
               </div>
               {mode === "multi" && (
                 <label className="fl-field fl-field--wide"><Icon name="calendar" size={22} /><span className="visually-hidden">Дата вылета</span>
