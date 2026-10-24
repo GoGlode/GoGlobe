@@ -1,17 +1,19 @@
-// «Данные на устройстве»: что GoGlobe хранит в этом браузере, и удаление всех этих данных.
+// «Настройки»: тема оформления и данные на устройстве (что GoGlobe хранит в этом браузере, удаление этих данных).
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { prefCount } from "../../data/preferences";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useHistory } from "../../state/HistoryContext";
 import { useProfile } from "../../state/ProfileContext";
-import { Icon, PageHeader } from "../../ui";
+import { THEME_KEY, useTheme } from "../../state/ThemeContext";
+import { Icon, PageHeader, ThemeToggle } from "../../ui";
 import "./profile.css";
 
 const PREFIX = "goglobe.";
 
 export default function DeviceDataPage() {
   const nav = useNavigate();
+  const { theme } = useTheme();
   const { profile, prefs } = useProfile();
   const { ids } = useFavorites();
   const { entries } = useHistory();
@@ -28,7 +30,7 @@ export default function DeviceDataPage() {
 
   const wipe = () => {
     try {
-      Object.keys(localStorage).filter((k) => k.startsWith(PREFIX)).forEach((k) => localStorage.removeItem(k));
+      Object.keys(localStorage).filter((k) => k.startsWith(PREFIX) && k !== THEME_KEY).forEach((k) => localStorage.removeItem(k));
     } catch {
       return setError("Не удалось удалить данные: хранилище браузера недоступно.");
     }
@@ -37,8 +39,13 @@ export default function DeviceDataPage() {
 
   return (
     <div className="prof-sub-screen">
-      <PageHeader title="Данные на устройстве" onBack={() => nav("/profile")} />
+      <PageHeader title="Настройки" onBack={() => nav("/profile")} />
       <div className="page prof-form">
+        <section className="prof-card prof-theme">
+          <span className="prof-theme__txt"><b>Тема оформления</b><small className="muted">{theme === "dark" ? "Ночная — нажмите, чтобы включить дневную" : "Дневная — нажмите, чтобы включить ночную"}</small></span>
+          <ThemeToggle />
+        </section>
+        <h2 className="prof-sub" style={{ margin: "4px 0 -6px" }}>Данные на устройстве</h2>
         <p className="muted" style={{ fontSize: 14, lineHeight: 1.45 }}>
           Аккаунтов пока нет, поэтому всё, что вы сохраняете в GoGlobe, хранится только в этом браузере и не отправляется на сервер.
         </p>

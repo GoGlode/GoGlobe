@@ -29,7 +29,7 @@ const MENU: { to: string; icon: IconName; label: string }[][] = [
     { to: "/flights", icon: "plane", label: "Перелёты" },
   ],
   [
-    { to: "/profile/settings", icon: "settings", label: "Данные на устройстве" },
+    { to: "/profile/settings", icon: "settings", label: "Настройки" },
     { to: "/credits", icon: "view", label: "Фото и лицензии" },
   ],
 ];
@@ -48,7 +48,7 @@ export default function ProfilePage() {
     <div className="prof">
       <header className="prof__top">
         <h1>Профиль</h1>
-        <Link to="/profile/settings" className="circle-btn" aria-label="Данные на устройстве"><Icon name="settings" /></Link>
+        <Link to="/profile/settings" className="circle-btn" aria-label="Настройки"><Icon name="settings" /></Link>
       </header>
 
       {loadError && <p className="prof__alert" role="alert">Не удалось прочитать сохранённые данные. Изменения могут не сохраниться — проверьте настройки браузера.</p>}

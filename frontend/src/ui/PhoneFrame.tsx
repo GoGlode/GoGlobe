@@ -1,6 +1,7 @@
 // Рамка iPhone для показа мобильного приложения на компьютере.
 // Приложение работает внутри iframe с шириной телефона, поэтому верстка и навигация — как на устройстве.
 import { useEffect, useState } from "react";
+import { useThemeSync } from "../state/ThemeContext";
 import "./phone.css";
 
 const SCREEN_W = 393;
@@ -17,6 +18,7 @@ export function shouldUsePhoneFrame() {
 }
 
 export default function PhoneFrame() {
+  useThemeSync(); // тема приложения внутри рамки подхватывается и рамкой
   const [scale, setScale] = useState(1);
   useEffect(() => {
     const fit = () => setScale(Math.min(1, (window.innerHeight - MARGIN) / FRAME_H));

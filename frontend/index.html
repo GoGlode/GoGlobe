@@ -7,6 +7,10 @@
     <meta name="theme-color" content="#EAF4FF" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+    <script>
+      // Тема до первой отрисовки, чтобы не было вспышки светлого экрана
+      try { if (localStorage.getItem("goglobe.theme.v1") === "dark") { document.documentElement.dataset.theme = "dark"; document.querySelector('meta[name="theme-color"]').setAttribute("content", "#0a1222"); } } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

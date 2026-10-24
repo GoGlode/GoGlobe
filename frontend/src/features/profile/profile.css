@@ -90,3 +90,9 @@
 
 .prof a:focus-visible, .prof-sub-screen button:focus-visible, .prof-sub-screen a:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(7, 135, 249, .35); }
 .btn:disabled { opacity: .5; cursor: default; box-shadow: none; }
+
+/* Настройки: тема */
+.prof-theme { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.prof-theme__txt { display: grid; gap: 4px; min-width: 0; }
+.prof-theme__txt b { font-size: 17px; }
+.prof-theme__txt small { font-size: 13px; line-height: 1.35; }

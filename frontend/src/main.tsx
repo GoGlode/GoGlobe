@@ -6,9 +6,11 @@ import { FavoritesProvider } from "./state/FavoritesContext";
 import { HistoryProvider } from "./state/HistoryContext";
 import { ProfileProvider } from "./state/ProfileContext";
 import PhoneFrame, { shouldUsePhoneFrame } from "./ui/PhoneFrame";
+import { ThemeProvider } from "./state/ThemeContext";
 import { SearchProvider } from "./state/SearchContext";
 import "./design/global.css";
 import "./ui/liquid.css"; // стеклянные кнопки — после всех стилей экранов
+import "./design/dark.css"; // тёмная тема — последней, перекрывает светлые цвета
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -18,7 +20,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <SearchProvider>
             <FavoritesProvider>
               <ProfileProvider>
-                <App />
+                <ThemeProvider>
+                  <App />
+                </ThemeProvider>
               </ProfileProvider>
             </FavoritesProvider>
           </SearchProvider>
