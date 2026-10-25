@@ -37,9 +37,12 @@
 :root[data-theme="dark"] .city-menu { background: rgba(20, 32, 58, .97); box-shadow: 0 16px 36px -10px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .1); }
 :root[data-theme="dark"] .city-menu__item small { background: var(--d-tint); }
 :root[data-theme="dark"] .city-menu__item.is-cursor { background: rgba(255, 255, 255, .08); }
-:root[data-theme="dark"] .glassnav .glassnav__lens { background: linear-gradient(180deg, rgba(255, 255, 255, .22) 0, rgba(255, 255, 255, .05) 55%, rgba(255, 255, 255, 0) 100%), linear-gradient(180deg, rgba(70, 92, 136, .7), rgba(40, 58, 98, .65));
-  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 255, 255, .16), inset 0 1.5px 0 rgba(255, 255, 255, .28), inset 0 -1px 0 rgba(0, 0, 0, .3); }
-:root[data-theme="dark"] .glassnav .glassnav__lens:is(.is-dragging, .is-moving) { background: linear-gradient(180deg, rgba(255, 255, 255, .26) 0, rgba(255, 255, 255, .04) 55%, rgba(255, 255, 255, 0) 100%), rgba(255, 255, 255, .06); }
+:root[data-theme="dark"] .glassnav .glassnav__lens { background: linear-gradient(180deg, rgba(255, 255, 255, .09) 0, rgba(255, 255, 255, .02) 60%, rgba(255, 255, 255, .04) 100%);
+  -webkit-backdrop-filter: blur(6px) brightness(1.08); backdrop-filter: blur(6px) brightness(1.08);
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .22); }
+:root[data-theme="dark"] .glassnav .glassnav__lens:is(.is-dragging, .is-moving) { background: linear-gradient(180deg, rgba(255, 255, 255, .07) 0, rgba(255, 255, 255, .01) 70%); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .18); }
+:root[data-theme="dark"] .glassnav__lens::after { background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .07) 50%, transparent 80%); background-size: 250% 100%; }
 :root[data-theme="dark"] .phone__home span { background: #e8eefc; }
 
 /* Белые поверхности → тёмные */
