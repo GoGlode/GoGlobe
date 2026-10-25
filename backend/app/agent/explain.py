@@ -5,7 +5,12 @@ from app.schemas.search import Confidence, Explanation, Money
 
 
 def explain(
-    h: HotelOption, f: FlightOption, total: Money, budget: Money | None, wishes: list[str]
+    h: HotelOption,
+    f: FlightOption,
+    total: Money,
+    budget: Money | None,
+    wishes: list[str],
+    dest_info: object | None = None,
 ) -> Explanation:
     why, pros, cons = [], [], []
     if budget and total.amount <= budget.amount:
@@ -20,6 +25,13 @@ def explain(
         (pros if f.direct else cons).append("Прямой рейс" if f.direct else "Рейс с пересадкой")
     if h.available is None:
         cons.append("Наличие номеров не подтверждено")
+    if dest_info is not None:
+        season = getattr(dest_info, "season_status", None)
+        temp = getattr(dest_info, "temperature_c", None)
+        if season:
+            pros.append(f"Сезонность: {season}")
+        if temp is not None:
+            pros.append(f"Температура: ~{temp}°C")
     return Explanation(
         why=why,
         pros=pros,
@@ -27,3 +39,4 @@ def explain(
         sources=sorted({h.source, f.source}),
         confidence=Confidence.confirmed if h.available else Confidence.estimated,
     )
+

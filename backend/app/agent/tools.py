@@ -210,9 +210,10 @@ def explain_option(
     total: Money,
     budget: Money | None,
     wishes: list[str],
+    dest_info: object | None = None,
 ) -> Explanation:
     """Explain Tool: понятное и честное объяснение выбора без выдумок."""
-    return explain_tool(hotel, flight, total, budget, wishes)
+    return explain_tool(hotel, flight, total, budget, wishes, dest_info=dest_info)
 
 
 # ---------------------------------------------------------------------------

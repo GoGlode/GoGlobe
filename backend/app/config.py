@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +13,26 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     # Пауза между стадиями в mock-режиме, чтобы фронт мог показать прогресс
     mock_stage_delay: float = 0.4
+
+    # LLM-настройки: читаются без префикса GOGLOBE_, потому что ключи внешних
+    # провайдеров принято именовать без неймспейса приложения (LLM_API_KEY, etc.).
+    # AliasChoices позволяет принять оба варианта — с префиксом и без.
+    llm_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("LLM_API_KEY", "GOGLOBE_LLM_API_KEY"),
+    )
+    llm_base_url: str = Field(
+        default="https://api.deepseek.com/v1",
+        validation_alias=AliasChoices("LLM_BASE_URL", "GOGLOBE_LLM_BASE_URL"),
+    )
+    llm_model: str = Field(
+        default="deepseek-chat",
+        validation_alias=AliasChoices("LLM_MODEL", "GOGLOBE_LLM_MODEL"),
+    )
+    use_mock_ai: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("USE_MOCK_AI", "GOGLOBE_USE_MOCK_AI"),
+    )
 
     @property
     def cors_list(self) -> list[str]:

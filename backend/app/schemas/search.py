@@ -46,6 +46,9 @@ class ParsedQuery(BaseModel):
     travelers: int | None = None
     budget: Money | None = None
     wishes: list[str] = []
+    # Предупреждения парсера (например, «месяц указан, но день не задан»).
+    # Не входят в API-контракт v0 напрямую — пробрасываются в SearchResponse.warnings.
+    warnings: list[str] = Field(default_factory=list, exclude=False)
 
 
 class Hotel(BaseModel):

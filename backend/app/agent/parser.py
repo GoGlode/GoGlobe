@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from datetime import date, timedelta
 from typing import Any
@@ -19,16 +18,19 @@ from typing import Any
 import httpx
 
 from app.agent.prompts import PARSER_SYSTEM_PROMPT
+from app.config import get_settings
 from app.schemas.search import DateRange, Money, ParsedQuery, SearchParams
 
 logger = logging.getLogger(__name__)
 
+# Ключи — regex-паттерны (без \b на концах, они добавляются при поиске).
+# Используем полные основы, чтобы «Мальдивы» не совпадало с «май».
 _MONTHS: dict[str, int] = {
     "январ": 1,
     "феврал": 2,
-    "март": 3,
+    "март(?!а|у|ом|е)|марта|марту|мартом|марте": 3,
     "апрел": 4,
-    "ма": 5,
+    "май|мая|маю|маем|мае": 5,
     "июн": 6,
     "июл": 7,
     "август": 8,
@@ -160,11 +162,15 @@ def parse_mock(query: str, params: SearchParams | None = None) -> ParsedQuery:
     if any(w in q for w in ("спа", "spa")):
         p.wishes.append("spa")
 
-    # 6. Даты: точный диапазон чисел ("с 10 по 15 ноября") или месяц + длительность
+    # 6. Даты: точный диапазон чисел («с 10 по 15 ноября») или только месяц.
+    # Принцип честности: если конкретный день не указан — не угадываем.
+    # dates остаётся None, добавляем предупреждение; агент задаст уточняющий вопрос.
     date_matched = False
-    for stem, month in _MONTHS.items():
-        # Проверяем диапазон вида "с 10 по 15 ноября" или "10-15 ноября"
-        range_match = re.search(rf"(?:с\s*)?(\d{{1,2}})\s*(?:по|-|–)\s*(\d{{1,2}})\s*\b{stem}", q)
+    for pattern, month in _MONTHS.items():
+        # Диапазон «с 10 по 15 ноября» или «10-15 ноября»
+        range_match = re.search(
+            rf"(?:с\s*)?(\d{{1,2}})\s*(?:по|-|–)\s*(\d{{1,2}})\s*(?:{pattern})", q
+        )
         if range_match:
             day_start = int(range_match.group(1))
             day_end = int(range_match.group(2))
@@ -177,16 +183,20 @@ def parse_mock(query: str, params: SearchParams | None = None) -> ParsedQuery:
             break
 
     if not date_matched:
-        for key, month in _MONTHS.items():
-            if re.search(rf"\b{key}", q) and p.duration_days:
-                year = date.today().year if month >= date.today().month else date.today().year + 1
-                start = date(year, month, 10)
-                p.dates = DateRange(
-                    **{
-                        "from": start.isoformat(),
-                        "to": (start + timedelta(days=p.duration_days)).isoformat(),
+        for pattern, month in _MONTHS.items():
+            if re.search(rf"(?:{pattern})", q):
+                if p.duration_days:
+                    # Месяц известен, длительность известна, но день не указан.
+                    # Не угадываем — оставляем dates=None и просим уточнить.
+                    month_names = {
+                        1: "январе", 2: "феврале", 3: "марте", 4: "апреле",
+                        5: "мае", 6: "июне", 7: "июле", 8: "августе",
+                        9: "сентябре", 10: "октябре", 11: "ноябре", 12: "декабре",
                     }
-                )
+                    p.warnings.append(
+                        f"Месяц ({month_names.get(month, str(month))}) указан, "
+                        "но конкретная дата начала не задана — уточните число."
+                    )
                 break
 
     # Явные params из формы имеют приоритет над текстом
@@ -232,17 +242,24 @@ def _llm_json_to_parsed_query(data: dict[str, Any]) -> ParsedQuery:
         end = start + timedelta(days=p.duration_days)
         p.dates = DateRange(**{"from": start.isoformat(), "to": end.isoformat()})
     elif month_name and p.duration_days:
-        for stem, num in _MONTHS.items():
-            if month_name.lower().startswith(stem[:3]):
-                year = date.today().year if num >= date.today().month else date.today().year + 1
-                start = date(year, num, 10)
-                p.dates = DateRange(
-                    **{
-                        "from": start.isoformat(),
-                        "to": (start + timedelta(days=p.duration_days)).isoformat(),
-                    }
-                )
-                break
+        # Месяц известен, но конкретный день не указан — не угадываем.
+        # Оставляем dates=None; агент задаст уточняющий вопрос.
+        month_abbr = {
+            "jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+            "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12,
+        }
+        ru_abbr = {
+            "янв": 1, "фев": 2, "мар": 3, "апр": 4, "май": 5, "маи": 5,
+            "июн": 6, "июл": 7, "авг": 8, "сен": 9, "окт": 10, "ноя": 11, "дек": 12,
+        }
+        ml = month_name.lower()[:3]
+        month_num = month_abbr.get(ml) or ru_abbr.get(ml)
+        month_display = month_name
+        p.warnings.append(
+            f"Месяц ({month_display}) указан, "
+            "но конкретная дата начала не задана — уточните число."
+        )
+        _ = month_num  # резервируем для будущего использования
 
     budget_raw = data.get("budget") or {}
     if budget_raw.get("max") is not None:
@@ -265,11 +282,12 @@ async def parse_llm(
     Возвращает (ParsedQuery, clarifying_question | None).
     При ошибке или недоступности ключа — безопасный фолбэк на parse_mock.
     """
-    api_key = os.getenv("LLM_API_KEY", "").strip()
-    base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com/v1").rstrip("/")
-    model = os.getenv("LLM_MODEL", "deepseek-chat")
+    settings = get_settings()
+    api_key = settings.llm_api_key.strip()
+    base_url = settings.llm_base_url.rstrip("/")
+    model = settings.llm_model
 
-    if not api_key or os.getenv("USE_MOCK_AI", "").lower() in ("1", "true", "yes"):
+    if not api_key or settings.use_mock_ai:
         p = parse_mock(query, params)
         return p, missing_question(p)
 

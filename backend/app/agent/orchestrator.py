@@ -54,6 +54,9 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
         parsed = parse_mock(req.query, req.params)
         clarifying = missing_question(parsed)
 
+    # Предупреждения парсера (например, о неполных датах) пробрасываем вверх
+    warnings.extend(parsed.warnings)
+
     # 2. Планирование поиска (Модуль 2)
     plan = build_search_plan(parsed, clarifying_question=clarifying)
 
@@ -67,12 +70,17 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
             clarifying_question=q,
         )
 
-    # Публикуем сообщения из плана как SSE-статусы
+    # Публикуем сообщения из плана как SSE-статусы (шаг 2 → клиент)
     for step in plan.steps:
-        logger.debug("Plan step: %s -> %s", step.tool, step.message)
+        await emit(sid, SearchEvent(stage=step.stage, message=step.message))
 
     # 3. Вызов инструментов (по плану)
-    await destination_search(parsed.destination, parsed.dates)
+    dest_info = await destination_search(parsed.destination, parsed.dates)
+    if dest_info:
+        if dest_info.season_status:
+            warnings.append(f"Сезонность: {dest_info.season_status}")
+        if dest_info.temperature_c is not None:
+            warnings.append(f"Средняя температура в регионе: {dest_info.temperature_c}°C")
     flights_p, hotels_p = get_providers()
     await stage("flights", f"Ищу перелёты: {parsed.destination}…")
     flights = await flight_search(
@@ -116,7 +124,9 @@ async def run_search(req: SearchRequest, emit) -> SearchResponse:
                 ),
                 flight=Flight(direct=f.direct, dates=f.dates, price=f.price, carrier=f.carrier),
                 total_price=total,
-                explanation=ex.explain(h, f, total, parsed.budget, parsed.wishes),
+                explanation=ex.explain(
+                    h, f, total, parsed.budget, parsed.wishes, dest_info=dest_info
+                ),
                 booking_url=h.booking_url,
                 data_freshness=min(f.fetched_at, h.fetched_at)
                 if f.fetched_at

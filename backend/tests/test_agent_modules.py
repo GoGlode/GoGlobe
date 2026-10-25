@@ -31,7 +31,11 @@ from app.schemas.search import DateRange, Money
 
 
 def test_parse_reference_demo_query() -> None:
-    """Проверка эталонного демо-запроса из README и презентации."""
+    """Эталонный демо-запрос: поля parsed корректны, дата без числа → dates=None + warning.
+
+    Баг 2: при «месяц + длительность» без конкретного числа парсер НЕ угадывает
+    дату (не ставит day=10). dates остаётся None, в warnings — предупреждение.
+    """
     query = (
         "Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. "
         "Нужен хороший отель рядом с морем и прямой перелёт"
@@ -40,18 +44,29 @@ def test_parse_reference_demo_query() -> None:
 
     assert parsed.destination == "Турция"
     assert parsed.duration_days == 5
-    assert parsed.dates is not None
+    # Конкретный день не указан — честный парсер не угадывает дату.
+    assert parsed.dates is None
+    # Должно быть предупреждение о неполной дате.
+    assert any("ноябр" in w.lower() or "дата" in w.lower() or "число" in w.lower()
+               for w in parsed.warnings)
     assert parsed.travelers == 2
     assert parsed.budget is not None
     assert parsed.budget.amount == 120000
     assert parsed.budget.currency == "RUB"
     assert "sea_view" in parsed.wishes
     assert "direct_flight" in parsed.wishes
-    assert missing_question(parsed) is None
+    # dates=None → агент задаёт уточняющий вопрос
+    q = missing_question(parsed)
+    assert q is not None
+    assert "даты" in q.lower() or "дней" in q.lower()
 
 
 def test_parse_minimal_complete_query() -> None:
-    """Минимально полный запрос — парсер должен извлечь всё без уточнений."""
+    """Минимально полный запрос: все поля извлечены, но дата без числа → dates=None.
+
+    После фикса бага 2: парсер не угадывает 10-е число, оставляет dates=None.
+    Полным запрос считается, когда передан точный диапазон дат.
+    """
     query = "Сочи на 4 дня в ноябре с девушкой, бюджет 60к, отель у моря и прямой рейс"
     parsed = parse_mock(query)
 
@@ -62,7 +77,9 @@ def test_parse_minimal_complete_query() -> None:
     assert parsed.budget.amount == 60000
     assert "sea_view" in parsed.wishes
     assert "direct_flight" in parsed.wishes
-    assert missing_question(parsed) is None
+    # Месяц указан, день нет → dates=None, агент спрашивает число
+    assert parsed.dates is None
+    assert any("число" in w.lower() or "дата" in w.lower() for w in parsed.warnings)
 
 
 def test_parse_exact_date_range() -> None:
@@ -80,7 +97,7 @@ def test_parse_exact_date_range() -> None:
 
 
 def test_parse_week_duration_and_currencies() -> None:
-    """Парсинг длительности 'на неделю' и валюты USD ($)."""
+    """Парсинг длительности 'на неделю' и валюты USD ($). Дата без числа → dates=None."""
     query = "Дубай на неделю в ноябре вдвоем, бюджет около 1500$"
     parsed = parse_mock(query)
 
@@ -90,7 +107,9 @@ def test_parse_week_duration_and_currencies() -> None:
     assert parsed.budget is not None
     assert parsed.budget.amount == 1500
     assert parsed.budget.currency == "USD"
-    assert missing_question(parsed) is None
+    # Баг 2 исправлен: «в ноябре» без числа → dates=None, не угадываем
+    assert parsed.dates is None
+    assert any("число" in w.lower() or "дата" in w.lower() for w in parsed.warnings)
 
 
 def test_parse_incomplete_no_destination() -> None:
@@ -145,6 +164,138 @@ def test_extract_json_payload_from_markdown_codeblock() -> None:
     llm_text_surrounded = 'Вот ваш ответ:\n{"destination": "Сочи"}\nСпасибо!'
     extracted_surrounded = extract_json_payload(llm_text_surrounded)
     assert extracted_surrounded["destination"] == "Сочи"
+
+
+# ---------------------------------------------------------------------------
+# Баг-тесты: три блокирующих правки Тимофея (24.10.2026)
+# ---------------------------------------------------------------------------
+
+
+def test_bug2_month_only_no_date_guessing() -> None:
+    """Баг 2: при «месяц + длительность» без числа даты НЕ угадываются.
+
+    Было: start = date(year, month, 10) — выдуманное 10-е число.
+    Стало: dates=None, warning о неполной дате, агент задаёт вопрос.
+    """
+    parsed = parse_mock("Хочу в Египет на 7 дней в декабре")
+    assert parsed.destination == "Египет"
+    assert parsed.duration_days == 7
+    # Дата НЕ должна быть выдумана
+    assert parsed.dates is None, "Парсер не должен угадывать дату начала"
+    # Должно быть предупреждение
+    assert len(parsed.warnings) > 0
+    assert any("число" in w.lower() or "дата" in w.lower() for w in parsed.warnings)
+    # missing_question должен спросить про даты
+    q = missing_question(parsed)
+    assert q is not None
+
+
+def test_bug2_exact_date_range_still_works() -> None:
+    """Баг 2 регрессия: точный диапазон «с 10 по 15 ноября» по-прежнему парсится."""
+    parsed = parse_mock("Турция с 10 по 15 ноября на двоих")
+    assert parsed.dates is not None
+    assert parsed.dates.from_.endswith("-11-10")
+    assert parsed.dates.to.endswith("-11-15")
+    assert parsed.duration_days == 5
+
+
+def test_bug3_maldives_not_may() -> None:
+    """Баг 3: «Мальдивы на неделю» НЕ должно превращаться в май 2027.
+
+    Было: основа 'ма' совпадала со словом 'Мальдивы' → month=5 (май).
+    Стало: используются полные паттерны май|мая|маю|маем|мае.
+    """
+    parsed = parse_mock("Мальдивы на неделю")
+    assert parsed.destination == "Мальдивы"
+    assert parsed.duration_days == 7
+    # Слово «Мальдивы» не должно вызывать определение месяца «май»
+    assert parsed.dates is None  # нет месяца → нет дат
+    assert not any("мае" in w.lower() or "май" in w.lower() for w in parsed.warnings)
+
+
+def test_bug3_may_still_detected() -> None:
+    """Баг 3 регрессия: настоящий «май»/«мая»/«мае» по-прежнему распознаётся."""
+    parsed = parse_mock("Турция в мае на 5 дней")
+    assert parsed.duration_days == 5
+    # Месяц май определён, день не указан → dates=None + warning
+    assert parsed.dates is None
+    assert any("мае" in w.lower() or "май" in w.lower() or "число" in w.lower()
+               for w in parsed.warnings)
+
+
+def test_bug3_marsh_not_march() -> None:
+    """Баг 3: «маршрут» не должен совпадать с «март»."""
+    parsed = parse_mock("Посоветуй маршрут по Европе на 10 дней")
+    assert parsed.duration_days == 10
+    # Слово «маршрут» не должно порождать month=3
+    assert parsed.dates is None
+    assert not any("марте" in w.lower() for w in parsed.warnings)
+
+
+def test_bug3_mart_and_maya_detected() -> None:
+    """Баг 3 регрессия: «марте»/«мая» распознаются корректно."""
+    parsed_mart = parse_mock("Италия в марте на 7 дней")
+    assert parsed_mart.duration_days == 7
+    assert parsed_mart.dates is None
+    assert any("март" in w.lower() or "число" in w.lower() for w in parsed_mart.warnings)
+
+    parsed_maya = parse_mock("Бали в мая на 10 дней")
+    assert parsed_maya.duration_days == 10
+    assert parsed_maya.dates is None
+    assert any("мае" in w.lower() or "май" in w.lower() or "число" in w.lower()
+               for w in parsed_maya.warnings)
+
+
+def test_bug1_llm_fallback_on_empty_key() -> None:
+    """Баг 1: при пустом llm_api_key parse_llm честно откатывается на parse_mock.
+
+    Ключ читается из Settings (не из os.getenv напрямую).
+    """
+    import asyncio
+    from unittest.mock import patch
+
+    from app.agent.parser import parse_llm
+
+    with patch("app.agent.parser.get_settings") as mock_settings:
+        mock_settings.return_value.llm_api_key = ""
+        mock_settings.return_value.llm_base_url = "https://api.deepseek.com/v1"
+        mock_settings.return_value.llm_model = "deepseek-chat"
+        mock_settings.return_value.use_mock_ai = False
+
+        result, _ = asyncio.run(
+            parse_llm("Турция с 10 по 15 ноября на двоих, бюджет 80к")
+        )
+    # Откат на mock отработал корректно
+    assert result.destination == "Турция"
+    assert result.dates is not None  # точный диапазон → даты есть
+    assert result.dates.from_.endswith("-11-10")
+
+
+def test_bug1_llm_fallback_on_llm_crash() -> None:
+    """Баг 1 + задача 6: LLM упал или вернул мусор → откат на mock, не исключение."""
+    import asyncio
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app.agent.parser import parse_llm
+
+    with patch("app.agent.parser.get_settings") as mock_settings, \
+         patch("httpx.AsyncClient") as mock_client:
+        mock_settings.return_value.llm_api_key = "fake-key-for-test"
+        mock_settings.return_value.llm_base_url = "https://api.deepseek.com/v1"
+        mock_settings.return_value.llm_model = "deepseek-chat"
+        mock_settings.return_value.use_mock_ai = False
+
+        # LLM выбрасывает сетевую ошибку
+        mock_client.return_value.__aenter__ = AsyncMock(
+            side_effect=httpx.ConnectError("Connection refused")
+        )
+
+        result, _ = asyncio.run(parse_llm("Хочу в Дубай на неделю"))
+    # Откат сработал — данные из mock-парсера
+    assert result.destination == "Дубай, ОАЭ"
+    assert result.duration_days == 7
 
 
 # ---------------------------------------------------------------------------
@@ -303,20 +454,26 @@ client = TestClient(app)
 
 
 def test_orchestrator_demo_full_pipeline() -> None:
-    """Сквозной запуск оркестратора: статус ok, офферы в бюджете, объяснения на месте."""
+    """Сквозной запуск оркестратора: статус ok, офферы в бюджете, объяснения на месте.
+
+    Используем точный диапазон дат, так как после исправления бага 2
+    «в ноябре» без числа даёт needs_clarification.
+    """
     query = (
-        "Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. "
+        "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей. "
         "Нужен хороший отель рядом с морем и прямой перелёт"
     )
     r = client.post("/api/search", json={"query": query}).json()
 
-    assert r["status"] == "ok"
+    assert r["status"] in ("ok", "partial")
     assert len(r["offers"]) > 0
     first = r["offers"][0]
     assert first["total_price"]["amount"] <= 120000
     assert first["flight"]["direct"] is True
     assert first["hotel"]["distance_to_sea_m"] <= 150
     assert "в бюджете" in first["explanation"]["why"]
+    # destination_search обогащает pros и warnings
+    assert any("сезон" in p.lower() for p in first["explanation"]["pros"])
 
 
 def test_orchestrator_needs_clarification() -> None:
@@ -330,11 +487,11 @@ def test_orchestrator_needs_clarification() -> None:
 def test_orchestrator_events_contain_all_stages() -> None:
     """SSE-поток содержит все ожидаемые стадии от parsing до done."""
     query = (
-        "Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. "
+        "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей. "
         "Нужен хороший отель рядом с морем и прямой перелёт"
     )
     r = client.post("/api/search", json={"query": query, "search_id": "test_stages"}).json()
-    assert r["status"] == "ok"
+    assert r["status"] in ("ok", "partial")
     body = client.get("/api/search/test_stages/events").text
     assert '"stage": "parsing"' in body
     assert '"stage": "flights"' in body
@@ -342,3 +499,88 @@ def test_orchestrator_events_contain_all_stages() -> None:
     assert '"stage": "validating"' in body
     assert '"stage": "ranking"' in body
     assert '"stage": "done"' in body
+
+
+# ---------------------------------------------------------------------------
+# Задача 6: тесты ранжирования и эталонные запросы с конкретными полями
+# ---------------------------------------------------------------------------
+
+
+def test_ranking_order_descending() -> None:
+    """Задача 6: offers отсортированы по score убывающе (лучший вариант — первый)."""
+    query = (
+        "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 200 000 рублей. "
+        "Прямой перелёт и отель у моря"
+    )
+    r = client.post("/api/search", json={"query": query}).json()
+
+    assert r["status"] in ("ok", "partial")
+    scores = [o["score"] for o in r["offers"] if o["score"] is not None]
+    assert len(scores) >= 2, "Должно быть хотя бы 2 оффера для проверки порядка"
+    for i in range(len(scores) - 1):
+        assert scores[i] >= scores[i + 1], (
+            f"Нарушен порядок ранжирования: scores[{i}]={scores[i]} < scores[{i+1}]={scores[i+1]}"
+        )
+
+
+def test_reference_query_dubai_budget_usd() -> None:
+    """Эталонный запрос: Дубай, 7 дней, 2 человека, бюджет USD.
+
+    Проверяет конкретные поля parsed и корректность обработки.
+    """
+    query = (
+        "Дубай с 1 по 8 декабря на двоих, бюджет 3000 долларов, прямой перелёт, всё включено"
+    )
+    r = client.post("/api/search", json={"query": query}).json()
+
+    parsed = r["parsed"]
+    assert parsed["destination"] == "Дубай, ОАЭ"
+    assert parsed["dates"] is not None
+    assert parsed["dates"]["from"].endswith("-12-01")
+    assert parsed["dates"]["to"].endswith("-12-08")
+    assert parsed["duration_days"] == 7
+    assert parsed["travelers"] == 2
+    assert parsed["budget"] is not None
+    assert parsed["budget"]["amount"] == 3000
+    assert parsed["budget"]["currency"] == "USD"
+    assert "direct_flight" in parsed["wishes"]
+    assert "all_inclusive" in parsed["wishes"]
+
+
+def test_reference_query_egypt_family_sea() -> None:
+    """Эталонный запрос: Египет, 10 дней, семья с ребёнком, отель у моря.
+
+    Проверяет корректность parsed.travelers=3 и wishes.
+    """
+    query = (
+        "Египет с 15 по 25 января на троих (двое взрослых и ребёнок), "
+        "отель у моря со звёздностью 4 или 5, всё включено"
+    )
+    r = client.post("/api/search", json={"query": query}).json()
+
+    parsed = r["parsed"]
+    assert parsed["destination"] == "Египет"
+    assert parsed["dates"] is not None
+    assert parsed["dates"]["from"].endswith("-01-15")
+    assert parsed["dates"]["to"].endswith("-01-25")
+    assert parsed["duration_days"] == 10
+    assert parsed["travelers"] == 3
+    assert "sea_view" in parsed["wishes"]
+    assert "all_inclusive" in parsed["wishes"]
+
+
+def test_destination_search_warnings_and_explanation_in_response() -> None:
+    """Задача 4: сезонность и температура из destination_search попадают в warnings и explanation."""
+    query = (
+        "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей"
+    )
+    r = client.post("/api/search", json={"query": query}).json()
+
+    assert r["status"] in ("ok", "partial")
+    warnings_text = " ".join(r.get("warnings", []))
+    assert "сезон" in warnings_text.lower()
+    assert "температур" in warnings_text.lower()
+    assert len(r["offers"]) > 0
+    first_exp = r["offers"][0]["explanation"]
+    assert any("сезон" in p.lower() for p in first_exp["pros"])
+

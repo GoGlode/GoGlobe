@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.main import app
 
-DEMO = ("Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. "
+DEMO = ("Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей. "
         "Нужен хороший отель рядом с морем и прямой перелёт")
 
 
