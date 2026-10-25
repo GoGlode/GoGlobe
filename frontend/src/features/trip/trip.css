@@ -54,15 +54,21 @@
 .hcard__foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; }
 .hcard__price b { font-size: 24px; display: block; } .hcard__price small { color: var(--c-muted); }
 .hcard__note { font-size: 13px; background: #fff7e6; border-radius: 12px; padding: 10px 12px; color: #7a5a14; }
-/* Карта */
-.map { position: relative; height: 560px; margin: 0 var(--s-4); border-radius: 28px; overflow: hidden; box-shadow: var(--shadow-md); }
+/* Карта: на всю ширину под шапкой, как на референсе. Пропорции контейнера = пропорциям картинки, чтобы проценты остановок совпадали с координатами */
+.map { position: relative; margin: 0; aspect-ratio: 1000 / 1480; overflow: hidden; background: #1c6fc0; }
+.map__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .map svg.bg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.pin { position: absolute; transform: translate(-12%, -50%); display: flex; align-items: center; gap: 0; }
-.pin__img { width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; overflow: hidden; box-shadow: var(--shadow-md); flex: none; }
-.pin__lbl { margin-left: -14px; padding: 10px 14px 10px 22px; border-radius: 0 18px 18px 0; background: var(--c-glass-strong); box-shadow: var(--shadow-md); font-size: 15px; } .pin__lbl small { display: block; color: var(--c-muted); font-size: 12px; }
-.plane { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: #fff; color: var(--c-primary); display: grid; place-items: center; transform: translate(-50%, -50%); box-shadow: var(--shadow-md); }
-.stops { margin: 14px var(--s-4) 0; padding: 14px; border-radius: 26px; }
-.stops h3 { margin: 0 0 10px; font-size: 18px; }
+.map .page-header { position: absolute; top: 0; left: 0; right: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; z-index: 6; }
+.map .page-header__title { color: #fff; text-shadow: 0 1px 6px rgba(0, 40, 100, .55); }
+.pin { position: absolute; width: 0; height: 0; z-index: 3; }
+.pin__img { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; overflow: hidden; box-shadow: 0 6px 16px rgba(0, 30, 80, .35); }
+.pin__lbl { position: absolute; left: 20px; top: 0; transform: translateY(-50%); z-index: -1; padding: 10px 16px 10px 22px; border-radius: 0 18px 18px 0; background: rgba(255, 255, 255, .92); box-shadow: 0 6px 16px rgba(0, 30, 80, .25); font-size: 17px; font-weight: 700; white-space: nowrap; color: var(--c-navy); }
+.pin__lbl small { display: block; color: var(--c-muted); font-size: 13px; font-weight: 500; }
+.pin--below .pin__lbl { left: 50%; top: 44px; transform: translateX(-50%); z-index: auto; border-radius: 18px; padding: 10px 18px; text-align: center; }
+.plane { position: absolute; z-index: 3; width: 42px; height: 42px; border-radius: 50%; background: #fff; color: var(--c-primary); display: grid; place-items: center; transform: translate(-50%, -50%); box-shadow: 0 6px 14px rgba(0, 30, 80, .3); }
+.map-sheet { margin-top: -26px; padding: 14px 0 24px; min-height: 0; }
+.map-sheet h3 { margin: 6px var(--s-4) 10px; font-size: 18px; }
+.map-sheet .stop { margin: 0 var(--s-4) 8px; }
 .stop { display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,.8); border-radius: 18px; padding: 8px; margin-bottom: 8px; }
 .stop__img { width: 76px; height: 56px; border-radius: 12px; overflow: hidden; flex: none; } .stop b { display: block; font-size: 16px; } .stop small { color: var(--c-muted); } .stop svg { margin-left: auto; color: var(--c-primary); }
 .trip-missing { display: grid; justify-items: center; gap: 12px; text-align: center; padding-top: 96px; }
