@@ -65,3 +65,13 @@
 .stops h3 { margin: 0 0 10px; font-size: 18px; }
 .stop { display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,.8); border-radius: 18px; padding: 8px; margin-bottom: 8px; }
 .stop__img { width: 76px; height: 56px; border-radius: 12px; overflow: hidden; flex: none; } .stop b { display: block; font-size: 16px; } .stop small { color: var(--c-muted); } .stop svg { margin-left: auto; color: var(--c-primary); }
+.trip-missing { display: grid; justify-items: center; gap: 12px; text-align: center; padding-top: 96px; }
+/* Длинные названия из реальных данных не ломают вёрстку */
+.thero__txt h1, .tcard__body h2, .hcard__top h3, .tl__card h4 { overflow-wrap: anywhere; }
+.thero__txt h1 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.thero__txt small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thero .photo--empty { background: linear-gradient(160deg, #4a74ad, #233f6d); } /* белый заголовок читается и без фото */
+.thero .photo--empty::after { opacity: .2; background: #fff; top: 28%; margin-bottom: auto; }
+.tl-empty { text-align: center; padding-top: 40px; padding-bottom: 24px; line-height: 1.45; }
+.thero .photo--empty::after { display: none; }
+.hcard__top h3 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }

@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { SEARCH_STEPS } from "../../data/api";
 import { useSearch } from "../../state/SearchContext";
-import { Icon } from "../../ui";
+import { Icon, Logo } from "../../ui";
 import { TripSkeleton } from "./StatusViews";
 import "./progress.css";
 
@@ -14,7 +14,7 @@ export default function ProgressView() {
   return (
     <div className="prog">
       <header className="prog__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><img src="/assets/brand/logo-goglobe.png" alt="GoGlobe" className="prog__logo" /></Link>
+        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="prog__logo" /></Link>
       </header>
 
       <div className="prog__orb" aria-hidden="true">

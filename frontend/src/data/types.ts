@@ -6,7 +6,7 @@ export interface Money { amount: number; currency: string } // как в API-к�
 
 export interface Hotel {
   id: string; city: string; name: string; rating?: number; reviews?: number; stars?: number; location: string;
-  photo: string; photoPos?: string; amenities: { icon: IconName; label: string }[]; pricePerNight: Money; tags: ("boutique" | "stars45" | "view")[];
+  photo: string; photoPos?: string; amenities: { icon: IconName; label: string }[]; pricePerNight?: Money; priceNote?: string; tags: ("boutique" | "stars45" | "view")[];
 }
 export interface Flight {
   id: string; airline: string; code: string; logoColor: string; depart: string; arrive: string; from: string; fromCity: string;

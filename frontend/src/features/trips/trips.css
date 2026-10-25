@@ -19,7 +19,7 @@
 .cal__day button:hover { background: rgba(7, 135, 249, .1); }
 .cal__day button:active { transform: scale(.94); }
 .cal__day button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(7, 135, 249, .4); }
-.cal__day.is-out button { color: #a5b1c6; }
+.cal__day.is-out:not(.trip-start):not(.trip-end) button { color: #7b8aa5; }
 
 /* Полоса диапазона поездки: на всю ячейку, скругления на концах и краях недели */
 .cal__day.in-trip::before { content: ""; position: absolute; inset: 3px 0; background: #dcecff; }

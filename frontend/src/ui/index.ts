@@ -10,3 +10,4 @@ export { default as CityInput } from "./CityInput";
 export type { CityOption } from "./CityInput";
 export { default as ThemeToggle } from "./ThemeToggle";
 export { useToast } from "./Toast";
+export { default as Logo } from "./Logo";

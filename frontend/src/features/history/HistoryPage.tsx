@@ -7,7 +7,7 @@ import type { Trip } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useHistory } from "../../state/HistoryContext";
 import { useSearch } from "../../state/SearchContext";
-import { Icon, Photo } from "../../ui";
+import { Icon, Logo, Photo } from "../../ui";
 import "./history.css";
 
 type Filter = "all" | "results" | "fav";
@@ -68,7 +68,7 @@ export default function HistoryPage() {
   return (
     <div className="hist">
       <header className="hist__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><img src="/assets/brand/logo-goglobe.png" alt="GoGlobe" className="hist__logo" /></Link>
+        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="hist__logo" /></Link>
       </header>
       <h1 className="hist__title">История</h1>
       <p className="hist__sub muted">Твои идеи для следующих путешествий</p>

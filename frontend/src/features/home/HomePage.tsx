@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { dateRange, money, plural } from "../../data/format";
 import { DESTINATIONS } from "../../data/trips";
 import { useSearch } from "../../state/SearchContext";
-import { Icon, Photo } from "../../ui";
+import { Icon, Logo, Photo } from "../../ui";
 import "./home.css";
 
 const EXAMPLE = "Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. Нужен хороший отель рядом с морем и прямой перелёт";
@@ -45,7 +45,7 @@ export default function HomePage() {
   return (
     <div className="home">
       <header className="home__top">
-        <img src="/assets/brand/logo-goglobe.png" alt="GoGlobe" className="home__logo" />
+        <Logo className="home__logo" />
       </header>
 
       <section className="home__hero" aria-labelledby="home-title">

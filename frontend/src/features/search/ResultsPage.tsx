@@ -7,7 +7,7 @@ import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
 import { BookButton, SourceLine } from "../trip/OfferInfo";
 import { SHARE_TEXT, shareTrip } from "../../data/share";
-import { Icon, Photo, useToast } from "../../ui";
+import { Icon, Logo, Photo, useToast } from "../../ui";
 import FilterBar from "./FilterBar";
 import { NO_FILTERS, applyFilters, isFiltered, type Filters } from "./filters";
 import { ClarifyView, EmptyView, ErrorView, WarningsBanner } from "./StatusViews";
@@ -79,7 +79,7 @@ export default function ResultsPage() {
   return (
     <div className="res">
       <header className="res__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><img src="/assets/brand/logo-goglobe.png" alt="GoGlobe" height={30} style={{ height: 30, width: "auto" }} /></Link>
+        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="res__logo" /></Link>
         <Link to="/" className="circle-btn" aria-label="Изменить запрос"><Icon name="filter" size={20} /></Link>
       </header>
 

@@ -78,7 +78,7 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 
 /* Кнопки, у которых экран задал свой фон более специфичным правилом */
 .hcard2__actions .btn.btn--ghost, .prof-edit {
-  background: var(--lg-white-bg); color: var(--c-primary);
+  background: var(--lg-white-bg); color: var(--c-link);
   -webkit-backdrop-filter: blur(12px) saturate(1.8); backdrop-filter: blur(12px) saturate(1.8);
   box-shadow: var(--lg-edge);
 }
