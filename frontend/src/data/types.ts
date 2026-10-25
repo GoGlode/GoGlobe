@@ -40,6 +40,8 @@ export interface Trip {
   stars?: number; direct?: boolean;
   /** Демо-данные (не из API) */
   demo?: boolean;
+  /** Подложка карты (public/assets/maps/*); нет — рисуется схематичная карта. Координаты остановок x/y — в процентах картинки */
+  mapImage?: string;
 }
 
 export interface SearchParamsUI { dates?: string; travelers?: string; budget?: string }

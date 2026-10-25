@@ -54,7 +54,8 @@ const greece: Trip = {
   },
   dataFreshness: DEMO_DATE, demo: true,
   hotels, cities: ["Афины", "Санторини"], flights,
-  stops: [{ city: "Афины", days: "Дни 1–3", photo: IMG + "greece-2.jpg", x: 30, y: 17 }, { city: "Санторини", days: "Дни 4–7", photo: IMG + "hero.jpg", x: 68, y: 60 }],
+  stops: [{ city: "Афины", days: "Дни 1–3", photo: IMG + "greece-2.jpg", x: 25, y: 30 }, { city: "Санторини", days: "Дни 4–7", photo: IMG + "hero.jpg", x: 80, y: 68 }],
+  mapImage: "/assets/maps/greece.jpg", // lon 22.91–26.19, lat 35.26–39.14: Афины (25 %, 30 %) и Санторини — по реальным координатам
 };
 
 /** Короткая фабрика для остальных вариантов выдачи (в макетах детализированы только Санторини и Афины). */
@@ -64,7 +65,7 @@ function lite(p: { id: string; country: string; title: string; summary: string; 
     { id: `${p.id}-h2`, city: p.city, name: `${p.city} Boutique`, rating: 4.5, reviews: 96, location: p.place, photo: IMG + `${p.id}-2.jpg`, amenities: [{ icon: "coffee", label: "Завтрак" }, { icon: "spa", label: "Спа" }], pricePerNight: usd(160), tags: ["boutique"] },
   ];
   return {
-    ...greece, id: p.id, country: p.country, title: p.title, summary: p.summary, why: p.why,
+    ...greece, mapImage: undefined, id: p.id, country: p.country, title: p.title, summary: p.summary, why: p.why,
     explanation: { why: [p.why], pros: [`${p.days} дней в рамках бюджета`, "Отели 4–5★ в выдаче"], cons: ["Подробный маршрут уточняется"], sources: ["Демо-данные GoGlobe"], confidence: "estimated" }, days: p.days, dates: p.dates, dateRange: p.range, price: usd(p.price),
     hero: p.img, photos: [1, 2, 3, 4].map((n, i) => ({ src: IMG + `${p.id}-${n}.jpg`, label: i === 0 ? p.city : ["Главные места", "Природа", "Виды"][i - 1] })),
     itinerary: greece.itinerary.slice(0, 4).map((d, i) => ({ ...d, photo: i === 0 ? p.img : IMG + `${p.id}-${i}.jpg` })), hotels: h, cities: [p.city], flights: [flights[0]],

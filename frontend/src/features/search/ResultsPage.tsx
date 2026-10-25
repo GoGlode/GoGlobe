@@ -13,6 +13,9 @@ import { NO_FILTERS, applyFilters, isFiltered, type Filters } from "./filters";
 import { ClarifyView, EmptyView, ErrorView, WarningsBanner } from "./StatusViews";
 import "./results.css";
 
+/** Запускает на кнопке анимацию тапа (класс .tap снимается по окончании, поэтому каждое нажатие проигрывается заново) */
+const tap = (e: { currentTarget: HTMLElement }) => { const b = e.currentTarget; b.classList.remove("tap"); void b.offsetWidth; b.classList.add("tap"); };
+
 const DOT = 9, PITCH = 17, MAX_BLOB = 62; // точка 9px + зазор 8px; предельная длина капли
 const LEAD = { k: 520, c: 30 }, TRAIL = { k: 60, c: 8.5 };
 
@@ -23,6 +26,7 @@ export default function ResultsPage() {
   const rail = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [heartTap, setHeartTap] = useState(0); // счётчик нажатий ♥: меняется ключ иконки, поэтому анимация играет при каждом тапе
   const { show, toast } = useToast();
   const share = async (t: Trip) => { const m = SHARE_TEXT[await shareTrip(t)]; if (m) show(m); };
   const trips = useMemo(() => applyFilters(all, filters), [all, filters]);
@@ -51,7 +55,7 @@ export default function ResultsPage() {
     };
     P.raf = requestAnimationFrame(tick);
   };
-  useEffect(() => () => cancelAnimationFrame(phys.current.raf), []);
+  useEffect(() => () => { cancelAnimationFrame(phys.current.raf); phys.current.raf = 0; }, []); // raf=0, иначе после перемонтирования (StrictMode) капля считает, что анимация уже идёт
   useEffect(() => { setActive(0); phys.current.target = 0; rail.current?.scrollTo({ left: 0 }); runBlob(); }, [filters]); // другая выборка — начинаем с первой карточки
 
   useEffect(() => {
@@ -109,9 +113,9 @@ export default function ResultsPage() {
         </div>
 
         <div className="res__controls">
-          <button className="res__round" aria-label="Пропустить" onClick={() => go(Math.min(active + 1, trips.length - 1))}><Icon name="x" size={26} /></button>
+          <button className="res__round res__round--skip" aria-label="Пропустить" onAnimationEnd={(e) => e.currentTarget.classList.remove("tap")} onClick={(e) => { tap(e); go(Math.min(active + 1, trips.length - 1)); }}><Icon name="x" size={26} /></button>
           <div className="res__dots" role="tablist"><span ref={blob} className="res__blob" aria-hidden="true" />{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} onClick={() => go(i)} />)}</div>
-          <button className={`res__round res__round--heart ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onClick={() => toggle(cur.id)}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
+          <button className={`res__round res__round--heart ${heartTap ? "tap" : ""} ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onAnimationEnd={(e) => { if (e.target === e.currentTarget || e.currentTarget.contains(e.target as Node)) setHeartTap(0); }} onClick={() => { setHeartTap(1); toggle(cur.id); }}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
         </div>
       </>)}
       {all[0]?.demo && <p className="res__demo muted">Демо-данные: цены и фото ориентировочные</p>}
