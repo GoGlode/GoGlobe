@@ -52,3 +52,4 @@
 .tcard__body h2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 .tcard__sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 .tcard__stats b { overflow: hidden; text-overflow: ellipsis; }
+.res__logo { height: 30px; width: auto; }

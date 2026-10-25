@@ -72,7 +72,8 @@
 :root[data-theme="dark"] .fl-modes { background: rgba(255, 255, 255, .06); }
 :root[data-theme="dark"] .fl-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 :root[data-theme="dark"] :is(.tl__items, .tcard__why p, .stop small) { color: #b3c1dc; }
-:root[data-theme="dark"] .cal__day.is-out button, :root[data-theme="dark"] .cal__day.muted button { color: #7384a6; }
+:root[data-theme="dark"] .cal__day.is-out:not(.trip-start):not(.trip-end) button, :root[data-theme="dark"] .cal__day.muted button { color: #7384a6; }
+:root[data-theme="dark"] .cal__day.trip-start button, :root[data-theme="dark"] .cal__day.trip-end button { color: #fff; }
 
 :root[data-theme="dark"] .photo--empty { background: linear-gradient(135deg, #1a2a4a, #223559 55%, #182642); }
 
@@ -86,4 +87,3 @@
 ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
 ::view-transition-old(root) { z-index: 1; }
 ::view-transition-new(root) { z-index: 2; }
-:root[data-theme="dark"] :is(.home__logo, .hist__logo) { filter: brightness(1.2) saturate(1.1) drop-shadow(0 0 6px rgba(98, 182, 255, .22)); }
