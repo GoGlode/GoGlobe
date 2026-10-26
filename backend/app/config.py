@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     providers: Literal["snapshot", "live"] = "snapshot"
     provider_timeout_seconds: Annotated[float, Field(gt=0, allow_inf_nan=False)] = 8
     provider_max_attempts: Annotated[int, Field(ge=1, le=3)] = 3
+    cache_ttl_seconds: Annotated[float, Field(ge=0, allow_inf_nan=False)] = 600
     parser: str = "mock"  # mock | llm
     cors_origins: str = "http://localhost:5173"
     # Пауза между стадиями в mock-режиме, чтобы фронт мог показать прогресс

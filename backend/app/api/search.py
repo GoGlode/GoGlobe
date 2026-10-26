@@ -1,11 +1,12 @@
 """HTTP-слой (API/BFF). Владелец: Backend №1."""
 import json
+from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.agent.orchestrator import run_search
-from app.cache.store import store
+from app.cache.store import cache, search_cache_key, store
 from app.schemas.search import SearchEvent, SearchRequest, SearchResponse, SearchStatus
 
 router = APIRouter(prefix="/api")
@@ -18,6 +19,15 @@ async def health() -> dict:
 
 @router.post("/search", response_model=SearchResponse)
 async def search(req: SearchRequest) -> SearchResponse:
+    key = search_cache_key(req)
+    cached = cache.get(key)
+    if cached is not None:
+        sid = req.search_id or uuid4().hex[:12]
+        res = cached.model_copy(deep=True, update={"search_id": sid})
+        store.results[sid] = res
+        await store.emit(sid, SearchEvent(stage="done", message="Готово (из кэша)"))
+        return res
+
     try:
         res = await run_search(req, store.emit)
     except Exception as e:  # noqa: BLE001 — на демо не должно быть 500 без тела
@@ -26,6 +36,8 @@ async def search(req: SearchRequest) -> SearchResponse:
         return SearchResponse(search_id=sid, status=SearchStatus.error,
                               warnings=[f"Внутренняя ошибка: {e}"])
     store.results[res.search_id] = res
+    if res.status in {SearchStatus.ok, SearchStatus.partial, SearchStatus.empty}:
+        cache.set(key, res)
     return res
 
 
