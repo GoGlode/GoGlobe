@@ -1,0 +1,21 @@
+{
+  "kind": "flights",
+  "source": "goglobe-snapshot/antalya",
+  "fetched_at": "2026-10-20T09:00:00+03:00",
+  "criteria": {
+    "destination": "Анталья, Турция",
+    "aliases": ["Анталья", "Турция"],
+    "dates": {"from": "2026-11-10", "to": "2026-11-15"},
+    "travelers": 2
+  },
+  "items": [
+    {
+      "id": "snap_fl_antalya_1",
+      "destination": "Анталья, Турция",
+      "direct": true,
+      "dates": {"from": "2026-11-10", "to": "2026-11-15"},
+      "price": {"amount": 36000, "currency": "RUB"},
+      "carrier": "Snapshot Air"
+    }
+  ]
+}

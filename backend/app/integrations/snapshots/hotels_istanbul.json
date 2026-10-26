@@ -1,0 +1,25 @@
+{
+  "kind": "hotels",
+  "source": "goglobe-snapshot/istanbul",
+  "fetched_at": "2026-10-20T09:10:00+03:00",
+  "criteria": {
+    "destination": "Стамбул, Турция",
+    "aliases": ["Стамбул"],
+    "dates": {"from": "2026-11-17", "to": "2026-11-21"},
+    "travelers": 2
+  },
+  "items": [
+    {
+      "id": "snap_ht_istanbul_1",
+      "destination": "Стамбул, Турция",
+      "name": "Galata Snapshot Hotel",
+      "stars": 4,
+      "rating": 4.4,
+      "photos": ["https://picsum.photos/seed/goglobe-istanbul/600/400"],
+      "price_per_night": {"amount": 8200, "currency": "RUB"},
+      "distance_to_sea_m": 900,
+      "available": true,
+      "booking_url": "https://example.com/book/snap-istanbul"
+    }
+  ]
+}

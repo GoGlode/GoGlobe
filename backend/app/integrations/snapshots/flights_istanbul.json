@@ -1,0 +1,21 @@
+{
+  "kind": "flights",
+  "source": "goglobe-snapshot/istanbul",
+  "fetched_at": "2026-10-20T09:10:00+03:00",
+  "criteria": {
+    "destination": "Стамбул, Турция",
+    "aliases": ["Стамбул"],
+    "dates": {"from": "2026-11-17", "to": "2026-11-21"},
+    "travelers": 2
+  },
+  "items": [
+    {
+      "id": "snap_fl_istanbul_1",
+      "destination": "Стамбул, Турция",
+      "direct": true,
+      "dates": {"from": "2026-11-17", "to": "2026-11-21"},
+      "price": {"amount": 32000, "currency": "RUB"},
+      "carrier": "Snapshot Air"
+    }
+  ]
+}
