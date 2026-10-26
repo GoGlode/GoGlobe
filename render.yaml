@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: goglobe-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: GOGLOBE_ENV
+        value: production
+      - key: GOGLOBE_CORS_ORIGINS
+        value: https://goglobe-demo.vercel.app
+      - key: GOGLOBE_PROVIDERS
+        value: snapshot
+      - key: GOGLOBE_PROVIDER_TIMEOUT_SECONDS
+        value: '8'
+      - key: GOGLOBE_PROVIDER_MAX_ATTEMPTS
+        value: '3'
+      - key: GOGLOBE_CACHE_TTL_SECONDS
+        value: '600'
