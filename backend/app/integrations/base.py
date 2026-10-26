@@ -10,7 +10,20 @@ from app.schemas.search import DateRange
 
 
 class ProviderError(Exception):
-    """Источник недоступен / таймаут. Агент обязан обработать и вернуть warnings."""
+    """Safe provider failure without upstream text, URLs or secrets."""
+
+    _CODES = {
+        "provider_timeout",
+        "provider_unavailable",
+        "provider_invalid_response",
+        "provider_failure",
+        "live_not_configured",
+    }
+
+    def __init__(self, code: str = "provider_failure", *, retryable: bool = False) -> None:
+        self.code = code if code in self._CODES else "provider_failure"
+        self.retryable = retryable
+        super().__init__(self.code)
 
 
 class FlightProvider(Protocol):
