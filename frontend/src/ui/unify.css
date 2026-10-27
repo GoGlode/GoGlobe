@@ -30,6 +30,9 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 .fl-field, .prof-field input, .home__panel-form input, .st__ans {
   background: var(--lg-white-bg); border: 0; box-shadow: var(--lg-edge);
 }
+/* Поле со стеклом создаёт свой слой — список городов внутри него перекрывался следующими полями и кнопкой. Открытое поле поднимаем выше соседей */
+.fl-field:focus-within, .fl-field:has(.city-menu) { z-index: 40; }
+.city-menu { z-index: 50; }
 .fl-field:focus-within, .prof-field input:focus, .home__panel-form input:focus, .st__ans:focus {
   box-shadow: 0 0 0 3px rgba(10, 132, 255, .22), var(--lg-edge); }
 .res__round, .tcard__heart, .hcard__heart, .plane { background: rgba(255, 255, 255, .78); box-shadow: var(--lg-edge); }
