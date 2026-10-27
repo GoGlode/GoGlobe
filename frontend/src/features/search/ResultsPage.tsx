@@ -1,5 +1,6 @@
 // Результаты поиска: «Я подобрал N вариантов», карусель карточек, ✕ / ♥. Владелец: Frontend №2.
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { money, plural } from "../../data/format";
 import type { Trip } from "../../data/types";
@@ -7,7 +8,7 @@ import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
 import { BookButton, SourceLine } from "../trip/OfferInfo";
 import { SHARE_TEXT, shareTrip } from "../../data/share";
-import { Icon, Logo, Photo, useToast } from "../../ui";
+import { Icon, PageHeader, Photo, useToast } from "../../ui";
 import FilterBar from "./FilterBar";
 import { NO_FILTERS, applyFilters, isFiltered, type Filters } from "./filters";
 import { ClarifyView, EmptyView, ErrorView, WarningsBanner } from "./StatusViews";
@@ -77,31 +78,13 @@ export default function ResultsPage() {
   if (status === "needs_clarification") return <ClarifyView question={clarifyingQuestion} query={query} onAnswer={(q) => void run({ query: q, params })} />;
   if (!all.length) return <EmptyView />;
 
-  const chips = [{ icon: "calendar", t: params.dates ?? "Любые даты" }, { icon: "users", t: params.travelers ?? "1–2 человека" }, { icon: "tag", t: params.budget ?? "Любой бюджет" }] as const;
   const cur = trips[Math.min(active, trips.length - 1)]; // при пустой выборке фильтров undefined
 
   return (
     <div className="res">
-      <header className="res__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="res__logo" /></Link>
-        <Link to="/" className="circle-btn" aria-label="Изменить запрос"><Icon name="filter" size={20} /></Link>
-      </header>
-
-      <div className="res__query glass">
-        <span className="res__spark"><Icon name="sparkle" size={20} /></span>
-        <p>{query || "Куда поехать на 7 дней в мае? Пляжи, красивая природа, бюджет до $1500 на двоих"}</p>
-        <Link to="/" className="res__send" aria-label="Уточнить"><Icon name="arrow-up" size={20} stroke={2.4} /></Link>
-      </div>
-      <div className="scroll-x res__chips">
-        {chips.map((c) => <span key={c.t} className="chip"><Icon name={c.icon} size={16} />{c.t}</span>)}
-      </div>
+      <PageHeader title="Варианты" onBack={() => nav(-1)} />
 
       {status === "partial" && <WarningsBanner warnings={warnings} />}
-
-      <div className="res__bubble fade-up">
-        <span className="res__avatar"><Icon name="sparkle" size={18} /></span>
-        <p className="glass">Я проанализировал ваши предпочтения и подобрал {all.length} {plural(all.length, "вариант", "варианта", "вариантов")} путешествий, которые идеально вам подходят.</p>
-      </div>
 
       <FilterBar value={filters} onChange={setFilters} shown={trips.length} total={all.length} />
 
@@ -112,13 +95,12 @@ export default function ResultsPage() {
           {trips.map((t, i) => <TripCard key={t.id} trip={t} index={i} total={trips.length} fav={has(t.id)} onFav={() => toggle(t.id)} onShare={() => void share(t)} onOpen={() => nav(`/trip/${t.id}`)} />)}
         </div>
 
-        <div className="res__controls">
+        {createPortal(<div className="res__controls">
           <button className="res__round res__round--skip" aria-label="Пропустить" onAnimationEnd={(e) => e.currentTarget.classList.remove("tap")} onClick={(e) => { tap(e); go(Math.min(active + 1, trips.length - 1)); }}><Icon name="x" size={26} /></button>
           <div className="res__dots" role="tablist"><span ref={blob} className="res__blob" aria-hidden="true" />{trips.map((t, i) => <button key={t.id} role="tab" aria-selected={i === active} aria-label={`Вариант ${i + 1}`} onClick={() => go(i)} />)}</div>
           <button className={`res__round res__round--heart ${heartTap ? "tap" : ""} ${has(cur.id) ? "is-on" : ""}`} aria-label="В избранное" onAnimationEnd={(e) => { if (e.target === e.currentTarget || e.currentTarget.contains(e.target as Node)) setHeartTap(0); }} onClick={() => { setHeartTap(1); toggle(cur.id); }}><Icon name="heart" size={26} filled={has(cur.id)} /></button>
-        </div>
+        </div>, document.querySelector(".app") ?? document.body)}
       </>)}
-      {all[0]?.demo && <p className="res__demo muted">Демо-данные: цены и фото ориентировочные</p>}
       {toast}
     </div>
   );

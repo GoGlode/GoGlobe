@@ -218,7 +218,6 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
             <div className="scroll-x fl-sorts" role="group" aria-label="Сортировка">
               {SORTS.map((s) => <button key={s.id} type="button" className={`chip ${sort === s.id ? "chip--active" : ""}`} aria-pressed={sort === s.id} onClick={() => setSort(s.id)}>{s.label}</button>)}
             </div>
-            <p className="fl-demo">Демо-данные: рейсы, время и цены — примеры, не реальные билеты</p>
             {results.map((r, i) => {
               const list = visible(r.options), legKey = `${i}:${r.leg.from}-${r.leg.to}`;
               const from = AIRPORTS.find((a) => a.code === r.leg.from)!, to = AIRPORTS.find((a) => a.code === r.leg.to)!;
@@ -228,7 +227,7 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
                   {list.length === 0 ? (
                     <div className="fl-state card">
                       <b>Рейсы не найдены</b>
-                      <p className="muted">{r.options.length ? "Попробуйте снять фильтры." : "В демо-данных есть рейсы из Москвы и Санкт-Петербурга в Афины, Стамбул, Анталью, Рим, Бангкок, Пхукет, Токио, Бали, Мале и Тбилиси (и обратно)."}</p>
+                      <p className="muted">{r.options.length ? "Попробуйте снять фильтры." : "Попробуйте изменить направление или даты."}</p>
                       <button type="button" className="btn btn--sm btn--ghost" onClick={() => (r.options.length ? (setOnlyDirect(false), setWithBaggage(false)) : formRef.current?.scrollIntoView({ behavior: "smooth" }))}>
                         {r.options.length ? "Снять фильтры" : "Изменить параметры"}</button>
                     </div>
@@ -274,11 +273,10 @@ function FlightCard({ o, chosen, onChoose }: { o: FlightOption; chosen: boolean;
           <div><dt>Дата вылета</dt><dd>{dayLabel(o.date)}</dd></div>
           {o.via && <div><dt>Пересадка</dt><dd>{o.via.city} ({o.via.code}), {durationLabel(o.layoverMinutes ?? 0)}</dd></div>}
           <div><dt>Время</dt><dd>местное для каждого аэропорта</dd></div>
-          <div><dt>Цена и места</dt><dd>не проверены — демо-пример</dd></div>
         </dl>
       )}
       <div className="fcard__foot">
-        <div className="fcard__price"><b>{money(o.price)}</b><small>на человека · пример</small></div>
+        <div className="fcard__price"><b>{money(o.price)}</b><small>на человека</small></div>
         <button type="button" className={`btn btn--sm ${chosen ? "btn--ghost" : ""}`} aria-pressed={chosen} onClick={onChoose}>
           {chosen ? <><Icon name="check" size={18} stroke={2.4} />Выбран</> : "Выбрать"}
         </button>

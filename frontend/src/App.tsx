@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import CreditsPage from "./features/credits/CreditsPage";
 import FavoritesPage from "./features/favorites/FavoritesPage";
 import FlightsScreen from "./features/flights/FlightsScreen";
+import HotelsPage from "./features/hotels/HotelsPage";
 import HistoryPage from "./features/history/HistoryPage";
 import HomePage from "./features/home/HomePage";
 import DeviceDataPage from "./features/profile/DeviceDataPage";
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/trip/:id/:tab?" element={<TripPage />} />
         <Route path="/trips" element={<MyTripsPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
+        <Route path="/hotels" element={<HotelsPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/edit" element={<ProfileEditPage />} />

@@ -1,25 +1,43 @@
 // Главный экран: «Куда поедем?», запрос, параметры, популярные направления. Владелец: Frontend №1.
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { dateRange, money, plural } from "../../data/format";
-import { DESTINATIONS } from "../../data/trips";
+import { DESTINATIONS, getTrip } from "../../data/trips";
+import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
-import { Icon, Logo, Photo } from "../../ui";
+import { Icon, MaskIcon, Photo } from "../../ui";
+import QuizSheet from "./QuizSheet";
 import "./home.css";
 
-const EXAMPLE = "Хочу на 5 дней в Турцию в ноябре, на двоих, бюджет до 120 000 рублей. Нужен хороший отель рядом с морем и прямой перелёт";
 const BUDGETS = [100_000, 150_000, 250_000];
 const MAX_TRAVELERS = 9;
 const today = () => new Date().toISOString().slice(0, 10);
 const rub = (amount: number) => money({ amount, currency: "RUB" });
 
+// Карточки направлений — отрисованные картинки из пакета дизайнера; у остальных остаётся обложка поездки
+const CARD_IMG: Record<string, string> = {
+  greece: "/assets/images/dest-greece.jpg", thailand: "/assets/images/dest-thailand.jpg", italy: "/assets/images/dest-italy.jpg",
+  japan: "/assets/images/dest-japan.jpg", bali: "/assets/images/dest-bali.jpg",
+};
+
+// Короткая справка на карточке: когда лучше ехать и на сколько
+const FACTS: Record<string, { season: string; stay: string }> = {
+  greece: { season: "май – октябрь", stay: "7–10 дней" }, thailand: { season: "ноябрь – апрель", stay: "10–14 дней" },
+  italy: { season: "апрель – октябрь", stay: "7–10 дней" }, japan: { season: "март – май", stay: "8–12 дней" },
+  bali: { season: "апрель – октябрь", stay: "10–14 дней" }, turkey: { season: "май – октябрь", stay: "7–10 дней" },
+  maldives: { season: "ноябрь – апрель", stay: "5–7 дней" }, georgia: { season: "май – октябрь", stay: "5–7 дней" },
+};
+
 type Panel = "dates" | "travelers" | "budget" | null;
 
 export default function HomePage() {
   const { query, setQuery, params, setParams, run, phase } = useSearch();
+  const { has, toggle: toggleFav } = useFavorites();
   const nav = useNavigate();
   const input = useRef<HTMLTextAreaElement>(null);
   const [panel, setPanel] = useState<Panel>(null);
+  const [quiz, setQuiz] = useState(false); // викторина-уточнение перед поиском
+  const [nudge, setNudge] = useState(false); // подсветка пустого поля при нажатии на «Создать»
   // Черновики открытой панели — применяются кнопкой «Готово»
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -28,12 +46,30 @@ export default function HomePage() {
 
   const datesError = from && from < today() ? "Дата начала уже прошла" : from && to && to < from ? "Обратно — раньше, чем туда" : null;
   const budgetValue = Number(budget.replace(/\s/g, ""));
-  const toggle = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
+  const togglePanel = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
   const apply = (patch: Partial<typeof params>) => { setParams({ ...params, ...patch }); setPanel(null); };
 
+  // Поле растёт вместе с текстом, пока запрос короткий — выглядит как одна строка поиска
+  useLayoutEffect(() => {
+    const el = input.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
+  }, [query]);
+
   const submit = () => {
-    if (!query.trim() || phase === "loading") return;
-    void run();
+    if (phase === "loading") return;
+    if (!query.trim()) {
+      input.current?.focus({ preventScroll: true });
+      setNudge(true);
+      return;
+    }
+    setPanel(null);
+    setQuiz(true);
+  };
+  const go = (q?: string, p?: typeof params) => {
+    setQuiz(false);
+    if (q !== undefined && p) { setQuery(q); setParams(p); void run({ query: q, params: p }); } else void run();
     nav("/results");
   };
   const pick = (q: string) => {
@@ -44,34 +80,44 @@ export default function HomePage() {
 
   return (
     <div className="home">
-      <header className="home__top">
-        <Logo className="home__logo" />
-      </header>
+      <div className="home__bg" aria-hidden="true">
+        <img src="/assets/images/hero-santorini.jpg" alt="" />
+        <i className="home__shade" />
+        <i className="home__frost" />
+      </div>
 
       <section className="home__hero" aria-labelledby="home-title">
-        <div className="home__photo"><Photo src="/assets/photos/hero.jpg" alt="Голубые купола Ии на Санторини" /></div>
-        <div className="home__panel glass">
-          <h1 id="home-title">Куда поедем?</h1>
-          <p className="muted">Опишите пожелания своими словами — AI подберёт путешествие.</p>
+        <header className="home__top">
+          <div className="home__brand" role="img" aria-label="GoGlobe — Plan. Explore. Travel.">
+            <b>GoGlobe</b>
+            <span>Plan. Explore. Travel.</span>
+          </div>
+          <nav className="home__round-nav" aria-label="Разделы">
+            <Link to="/profile" className="home__round" aria-label="Профиль"><Icon name="user" size={21} stroke={1.8} /></Link>
+          </nav>
+        </header>
+        <div className="home__intro">
+          <h1 id="home-title">Куда<br />поедем?</h1>
+          <p>Расскажите о своей идеальной<br />поездке — и мы создадим<br />для вас маршрут</p>
         </div>
       </section>
 
       <form className="home__form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-        <label className="home__input glass">
-          <span className="home__spark"><Icon name="sparkle" size={20} /></span>
+        <label className={`home__input ${nudge ? "is-nudge" : ""}`} onAnimationEnd={() => setNudge(false)}>
+          <MaskIcon src="search-sparkle" size={24} className="home__search-ic" />
           <span className="visually-hidden">Опишите путешествие</span>
-          <textarea ref={input} rows={3} maxLength={2000} value={query} placeholder="Хочу неделю у моря с красивыми видами…"
+          <textarea ref={input} rows={1} maxLength={2000} value={query} placeholder="Например: Италия на 7 дней, море и культура"
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); } }} />
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }} />
         </label>
 
-        <div className="scroll-x home__chips" role="group" aria-label="Параметры путешествия">
-          <button type="button" className={`chip ${params.dates ? "is-set" : ""}`} aria-expanded={panel === "dates"} onClick={() => toggle("dates")}>
-            <Icon name="calendar" size={16} />{params.dates ?? "Даты"}</button>
-          <button type="button" className={`chip ${params.travelers ? "is-set" : ""}`} aria-expanded={panel === "travelers"} onClick={() => toggle("travelers")}>
-            <Icon name="users" size={16} />{params.travelers ?? "Путешественники"}</button>
-          <button type="button" className={`chip ${params.budget ? "is-set" : ""}`} aria-expanded={panel === "budget"} onClick={() => toggle("budget")}>
-            <Icon name="tag" size={16} />{params.budget ?? "Бюджет"}</button>
+        <div className="home__opts" role="group" aria-label="Параметры путешествия">
+          <button type="button" className={`home__opt ${params.dates ? "is-set" : ""}`} aria-expanded={panel === "dates"} onClick={() => togglePanel("dates")}>
+            <Icon name="calendar" size={24} stroke={1.7} /><span><b>Даты</b><small>{params.dates ?? "Любые"}</small></span></button>
+          <button type="button" className={`home__opt ${params.travelers ? "is-set" : ""}`} aria-expanded={panel === "travelers"} onClick={() => togglePanel("travelers")}>
+            <Icon name="users" size={24} stroke={1.7} /><span><b>Путешественники</b><small>{params.travelers ?? "1–2"}</small></span></button>
+          <button type="button" className={`home__opt ${params.budget ? "is-set" : ""}`} aria-expanded={panel === "budget"} onClick={() => togglePanel("budget")}>
+            <Icon name="wallet" size={24} stroke={1.7} /><span><b>Бюджет</b><small>{params.budget ?? "Любой"}</small></span></button>
         </div>
 
         {panel === "dates" && (
@@ -106,35 +152,54 @@ export default function HomePage() {
                 onChange={(e) => setBudget(e.target.value)} />
             </label>
             <div className="home__row">
-              {BUDGETS.map((b) => <button type="button" key={b} className="chip" onClick={() => setBudget(String(b))}>до {rub(b)}</button>)}
+              {BUDGETS.map((b) => <button type="button" key={b} className="home__quick" onClick={() => setBudget(String(b))}>до {rub(b)}</button>)}
             </div>
             <PanelActions disabled={!(budgetValue > 0)} onReset={() => apply({ budget: undefined })}
               onApply={() => apply({ budget: `до ${rub(budgetValue)}` })} />
           </div>
         )}
 
-        <button className="btn" disabled={!query.trim() || phase === "loading"}>Создать путешествие</button>
-        <div className="home__hint">
-          <span className="muted">Даты, состав и бюджет можно не указывать</span>
-          <button type="button" className="home__example" onClick={() => pick(EXAMPLE)}>Пример</button>
-        </div>
-        <p className="home__demo">Демонстрационный режим — тестовые данные</p>
+        <button className="home__cta" disabled={phase === "loading"}>
+          <MaskIcon src="search-sparkle" size={28} />
+          <span>Создать путешествие</span>
+          <Icon name="arrow-right" size={22} stroke={2} />
+        </button>
       </form>
 
       <section className="home__popular" aria-labelledby="popular-title">
-        <h2 id="popular-title" className="h-title">Популярные направления</h2>
-        <ul className="scroll-x home__dests">
-          {DESTINATIONS.map((d) => (
-            <li key={d.id}>
-              <button type="button" className="home__dest" aria-label={`${d.name}: подставить пример запроса`} onClick={() => pick(d.query)}>
-                <Photo src={d.img} alt="" />
-                <span className="home__dest-label glass"><b>{d.name}</b><small>{d.sub}</small></span>
-              </button>
-            </li>
-          ))}
+        <h2 id="popular-title">Популярные направления</h2>
+        <ul className="home__dests">
+          {DESTINATIONS.map((d) => {
+            const fav = has(d.id);
+            const f = FACTS[d.id];
+            return (
+              <li key={d.id} className="dest">
+                <button type="button" className="dest__main" aria-label={`${d.name}: подставить пример запроса`} onClick={() => pick(d.query)}>
+                  <span className="dest__img"><Photo src={CARD_IMG[d.id] ?? d.img} alt="" /></span>
+                  <span className="dest__txt">
+                    <b>{d.name}</b>
+                    <small>{d.sub}</small>
+                    {f && (
+                      <span className="dest__facts">
+                        <span><Icon name="sun" size={15} stroke={1.8} />{f.season}</span>
+                        <span><Icon name="clock" size={15} stroke={1.8} />{f.stay}</span>
+                      </span>
+                    )}
+                  </span>
+                </button>
+                {getTrip(d.id) && (
+                  <button type="button" className={`dest__heart ${fav ? "is-on" : ""}`} aria-pressed={fav}
+                    aria-label={fav ? `Убрать «${d.name}» из избранного` : `Добавить «${d.name}» в избранное`} onClick={() => toggleFav(d.id)}>
+                    <Icon name="heart" size={18} stroke={2} filled={fav} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
-        <Link to="/credits" className="home__credits">Фото: Wikimedia Commons — авторы и лицензии</Link>
       </section>
+
+      {quiz && <QuizSheet query={query} params={params} onClose={() => setQuiz(false)} onDone={go} />}
     </div>
   );
 }

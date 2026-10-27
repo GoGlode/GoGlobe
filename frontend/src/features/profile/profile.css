@@ -60,7 +60,7 @@
 .prof-menu--static small { font-size: 13.5px; }
 
 /* Формы */
-.prof-sub-screen .page-header { background: rgba(234, 244, 255, .82); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.prof-sub-screen .page-header { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .prof-form { display: grid; gap: 18px; padding-bottom: 12px; }
 .prof-avatar-edit { display: grid; justify-items: center; gap: 14px; padding-top: 8px; }
 .prof-field { display: grid; gap: 6px; font-size: 13.5px; color: var(--c-muted); }

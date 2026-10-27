@@ -37,7 +37,6 @@ export default function ProgressView() {
         ))}
       </ol>
       <TripSkeleton />
-      <p className="prog__demo">Демонстрационный режим — тестовые данные</p>
     </div>
   );
 }

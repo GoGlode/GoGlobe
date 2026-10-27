@@ -10,6 +10,7 @@ import { ThemeProvider } from "./state/ThemeContext";
 import { SearchProvider } from "./state/SearchContext";
 import "./design/global.css";
 import "./ui/liquid.css"; // стеклянные кнопки — после всех стилей экранов
+import "./ui/unify.css"; // единый стиль по образцу главной — после liquid
 import "./design/dark.css"; // тёмная тема — последней, перекрывает светлые цвета
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

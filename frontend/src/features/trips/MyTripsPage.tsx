@@ -55,12 +55,11 @@ export default function MyTripsPage() {
 
   const onDay = (t: MyTrip) => !selected || (t.start <= selected && selected <= t.end);
   const upcoming = upcomingAll.filter(onDay), past = pastAll.filter(onDay);
-  const back = () => ((window.history.state as { idx?: number } | null)?.idx ? nav(-1) : nav("/"));
   const monthTitle = `${cap(new Date(month.y, month.m, 1).toLocaleDateString("ru-RU", { month: "long" }))} ${month.y}`;
 
   return (
     <div className="mytrips-screen">
-      <PageHeader title="Мои поездки" onBack={back}
+      <PageHeader large title="Мои поездки"
         right={<button type="button" className="circle-btn" aria-label="Новая поездка" onClick={() => nav("/")}><Icon name="plus" /></button>} />
       <div className="page mytrips">
         <section className="cal card" aria-label="Календарь поездок">
@@ -118,7 +117,6 @@ export default function MyTripsPage() {
         {!selected && trips.length === 0 && (
           <div className="mytrips__empty card"><p><b>Поездок пока нет</b></p><Link className="btn btn--sm" to="/">Создать путешествие</Link></div>
         )}
-        <p className="mytrips__demo">Демо-данные: поездки и статусы тестовые</p>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-.fl-screen .page-header { background: rgba(234, 244, 255, .82); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.fl-screen .page-header { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .fl { display: grid; gap: 12px; padding-bottom: 8px; }
 .fl-lead { font-size: 14px; text-align: center; margin-top: -4px; }
 .fl-filter-btn { position: relative; }

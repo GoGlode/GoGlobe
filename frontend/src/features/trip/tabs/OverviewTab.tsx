@@ -45,10 +45,8 @@ export default function OverviewTab({ trip: t }: { trip: Trip }) {
         <div className="treasons">{t.reasons.map((r) => <div key={r.text}><Icon name={r.icon} size={22} /><span>{r.text}</span></div>)}</div>
         <ProsCons trip={t} />
         <SourceLine trip={t} />
-        {!hasBooking(t) && <p className="muted tdemo">{bookingHint(t)}</p>}
         {t.photos.length > 0 && <h3>Ключевые места</h3>}
         {t.photos.length > 0 && <div className="scroll-x tplaces">{t.photos.map((p) => <div className="tplace" key={p.label}><Photo src={p.src} pos={p.pos} alt={p.label} /><span>{p.label}</span></div>)}</div>}
-        {t.demo && <p className="muted tdemo">Демо-данные: цены, рейтинги и фото ориентировочные</p>}
         <div className="tcta">
           <BookButton trip={t} />
           <Link className="btn btn--ghost" to={`/trip/${t.id}/itinerary`}>Маршрут <Icon name="arrow-right" size={20} /></Link>

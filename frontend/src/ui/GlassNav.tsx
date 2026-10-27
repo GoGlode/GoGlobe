@@ -3,14 +3,13 @@
 // задний тянется следом (линза растягивается и чуть сплющивается), потом края сходятся с мягким перелётом.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { MaskIcon } from "./Icon";
 
 const ITEMS = [
-  { to: "/profile", icon: "nav-profile", label: "Профиль" },
-  { to: "/trips", icon: "nav-calendar", label: "Мои поездки" },
+  { to: "/flights", icon: "plane", label: "Перелёты" },
+  { to: "/hotels", icon: "bed", label: "Отели" },
   { to: "/", icon: "search-sparkle-nav", label: "Поиск", center: true },
+  { to: "/trips", icon: "nav-calendar", label: "Мои поездки" },
   { to: "/favorites", icon: "nav-favorites", label: "Избранное" },
-  { to: "/history", icon: "nav-history", label: "История" },
 ];
 
 // Фирменная иконка AI-поиска (как public/assets/icons/search-sparkle-nav.svg), но инлайном — чтобы звёзды мерцали отдельно от лупы
@@ -25,10 +24,13 @@ function SearchIcon({ size }: { size: number }) {
 }
 
 // Контурные иконки инлайном: при выборе пункта их линии «дорисовываются» (stroke-dashoffset, см. glassnav.css)
-function DrawIcon({ name, size }: { name: "nav-favorites" | "nav-profile" | "nav-calendar" | "nav-history"; size: number }) {
+function DrawIcon({ name, size }: { name: "nav-favorites" | "nav-profile" | "nav-calendar" | "nav-history" | "plane" | "bed"; size: number }) {
+  const small = name === "plane" || name === "bed"; // эти иконки нарисованы на сетке 24×24
   return (
-    <svg className="nav-draw" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {name === "nav-favorites" ? <path pathLength={1} d="M32 54 10.5 33.5C-2 20 16 4 29 16l3 3 3-3C48 4 66 20 53.5 33.5Z" />
+    <svg className="nav-draw" width={size} height={size} viewBox={small ? "0 0 24 24" : "0 0 64 64"} fill="none" stroke="currentColor" strokeWidth={small ? "1.9" : "4.2"} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {name === "plane" ? <path pathLength={1} d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" />
+        : name === "bed" ? <><path pathLength={1} d="M3 19V6M3 15h18v4M21 15v-2.5A3.5 3.5 0 0017.5 9H11v6" /><circle className="nav-draw__2" pathLength={1} cx="7" cy="11.5" r="1.8" /></>
+        : name === "nav-favorites" ? <path pathLength={1} d="M32 54 10.5 33.5C-2 20 16 4 29 16l3 3 3-3C48 4 66 20 53.5 33.5Z" />
         : name === "nav-profile" ? <><path pathLength={1} d="M21 20a11 11 0 1 1 22 0a11 11 0 1 1-22 0" /><path className="nav-draw__2" pathLength={1} d="M10 56c1.5-12 9.5-18 22-18s20.5 6 22 18Z" /></>
         : name === "nav-history" ? <><path pathLength={1} d="M11 25A22 22 0 1 1 10 38" /><path className="nav-draw__2" pathLength={1} d="M9 12v14h14" /><path className="nav-draw__3" pathLength={1} d="M32 17v16l11 7" /></>
         : <><rect pathLength={1} x="9" y="13" width="46" height="42" rx="6" /><path className="nav-draw__2" pathLength={1} d="M9 25h46" /><path className="nav-draw__3" pathLength={1} d="M20 7v12M44 7v12" />
@@ -55,7 +57,7 @@ export default function GlassNav() {
   const [overIdx, setOverIdx] = useState(0);
   const drag = useRef<{ id: number; startX: number; startLens: number; moved: boolean; w: number; min: number; max: number; centers: number[] } | null>(null);
   const justDragged = useRef(false);
-  const isActive = (to: string) => (to === "/" ? !["/profile", "/trips", "/favorites", "/history"].some((p) => pathname.startsWith(p)) : pathname.startsWith(to));
+  const isActive = (to: string) => (to === "/" ? !["/flights", "/hotels", "/trips", "/favorites"].some((p) => pathname.startsWith(p)) : pathname.startsWith(to));
   const activeIdx = ITEMS.findIndex((it) => isActive(it.to));
 
   // ── Физика линзы ──
@@ -106,7 +108,7 @@ export default function GlassNav() {
   const measure = () => {
     const el = navRef.current?.children[activeIdx + 1] as HTMLElement | undefined;
     if (!el) return;
-    const pad = ITEMS[activeIdx].center ? 4 : 0;
+    const pad = 0;
     setLens({ l: el.offsetLeft - pad, r: el.offsetLeft + el.offsetWidth + pad, h: el.offsetHeight + pad * 2 });
   };
   useLayoutEffect(measure, [activeIdx]);
@@ -161,13 +163,13 @@ export default function GlassNav() {
   return (
     <nav ref={navRef} className="glassnav glass" aria-label="Основная навигация" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
       onPointerCancel={onCancel} onClickCapture={(e) => { if (justDragged.current) { e.preventDefault(); e.stopPropagation(); } }}>
-      <span ref={lensRef} className={`glassnav__lens ${moving && !dragging ? "is-moving" : ""} ${lens ? "is-ready" : ""} ${dragging ? "is-dragging" : ""}`} aria-hidden="true" />
+      <span ref={lensRef} className={`glassnav__lens ${moving && !dragging ? "is-moving" : ""} ${lens ? "is-ready" : ""} ${dragging ? "is-dragging" : ""} ${ITEMS[activeIdx].center ? "is-on-center" : ""}`} aria-hidden="true" />
       {ITEMS.map((it) => {
         const active = dragging ? ITEMS.indexOf(it) === overIdx : isActive(it.to);
         return (
           <NavLink key={it.to} to={it.to} draggable={false} aria-label={it.label} aria-current={active ? "page" : undefined}
             className={`glassnav__item ${it.center ? "glassnav__item--center" : ""} ${active ? "is-active" : ""}`}>
-            {it.center ? <SearchIcon size={34} /> : it.icon === "nav-favorites" || it.icon === "nav-profile" || it.icon === "nav-calendar" || it.icon === "nav-history" ? <DrawIcon name={it.icon} size={26} /> : <MaskIcon src={it.icon} size={26} />}
+            {it.center ? <SearchIcon size={34} /> : <DrawIcon name={it.icon as "nav-favorites"} size={26} />}
           </NavLink>
         );
       })}

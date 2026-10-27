@@ -1,0 +1,64 @@
+/* Единый стиль GoGlobe — по образцу главной: мягкое матовое стекло, тонкая светлая кромка (.5px), плоский синий #0a84ff,
+   без градиентов на блоках. Подключается после liquid.css и перекрывает разнобой отдельных экранов. */
+:root {
+  /* Эталон — стекло нижней навигации: заливка .66, blur 18 + saturate 160%, кромка 1px белая. Теней нет */
+  --lg-white-bg: var(--c-glass);
+  --lg-surface-bg: var(--c-glass);
+  --lg-edge: inset 0 0 0 1px rgba(255, 255, 255, .85);
+  --lg-surface-edge: inset 0 0 0 1px rgba(255, 255, 255, .85);
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .45);
+  --shadow-md: none; --shadow-sm: none; --shadow-glow: none;
+}
+.card, .prof-card, .fcard, .fav, .hcard2, .tl__card, .mtcard, .cal.card, .stop, .pin__lbl,
+.btn--ghost, button.chip:not(.chip--active), .circle-btn, .tcard__heart, .hcard__heart, .res__round, .ttab:not(.is-on), .seg button:not(.on),
+.fl-modes button:not(.on), .home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .hist__filter-btn,
+.fl-field, .prof-field input, .home__panel-form input, .st__ans {
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+
+/* Мелкие стеклянные элементы — та же кромка, что у больших */
+button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
+.home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .circle-btn, .hist__filter-btn { box-shadow: var(--lg-edge); }
+
+/* Заголовок вкладок: крупно слева (как iOS large title) */
+.page-header--large { justify-content: space-between; padding-top: 18px; }
+.page-header--large .page-header__title { flex: none; text-align: left; font-size: 32px; font-weight: 800; letter-spacing: -.03em; }
+.hist > .page-header, .prof > .page-header { margin: 0 calc(var(--s-4) * -1); }
+.hist__sub { margin-top: -4px; }
+
+/* Поля ввода, степперы и круглые кнопки на фото — стекло вместо белых плашек с рамкой */
+.fl-field, .prof-field input, .home__panel-form input, .st__ans {
+  background: var(--lg-white-bg); border: 0; box-shadow: var(--lg-edge);
+}
+.fl-field:focus-within, .prof-field input:focus, .home__panel-form input:focus, .st__ans:focus {
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, .22), var(--lg-edge); }
+.res__round, .tcard__heart, .hcard__heart, .plane { background: rgba(255, 255, 255, .78); box-shadow: var(--lg-edge); }
+
+/* Белые «листы» поверх фото и карточки с фото */
+.tcard__body, .hcard__body, .tsheet, .hmenu__list { background: rgba(255, 255, 255, .94); }
+.tcard, .hcard { box-shadow: var(--lg-surface-edge); }
+.hmenu__list { border: 0; box-shadow: var(--lg-surface-edge); }
+
+/* Плашки «демо» и предупреждения — без жёстких рамок */
+.fl-demo, .hist__demo, .prog__demo, .warn { border: 0; box-shadow: inset 0 0 0 .5px rgba(245, 165, 36, .5); }
+
+:root[data-theme="dark"] {
+  --lg-white-bg: rgba(255, 255, 255, .08);
+  --lg-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-surface-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .4);
+}
+:root[data-theme="dark"] .res__round, :root[data-theme="dark"] .tcard__heart, :root[data-theme="dark"] .hcard__heart, :root[data-theme="dark"] .plane { background: rgba(60, 82, 128, .8); }
+:root[data-theme="dark"] .tcard__body, :root[data-theme="dark"] .hcard__body, :root[data-theme="dark"] .tsheet, :root[data-theme="dark"] .hmenu__list { background: #121f38; }
+
+/* Горизонтальные ряды (чипы, вкладки): привязка к началу с отступом — первый элемент не прилипает к краю экрана */
+.scroll-x { scroll-padding-inline: var(--s-4); }
+
+/* Результаты поиска: вместо нижнего меню — пульт выбора (✕ · точки · ♥), закреплённый внизу экрана */
+.app:has(.res__controls) .glassnav, .app:has(.prog) .glassnav { display: none; } /* и на экране «Подбираю путешествие» меню не нужно */
+/* Пульт неподвижен: приколот к низу экрана и не прокручивается вместе с карточками */
+/* Вынесен в корень приложения (портал) — не зависит от прокрутки и анимаций экрана, стоит строго на месте */
+.app > .res__controls { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: none; animation: none; transition: none; z-index: 12; padding: 0; pointer-events: none; }
+.res__controls > * { pointer-events: auto; }
+.res { padding-bottom: 104px; }
+.res > .page-header { margin: 0 calc(var(--s-4) * -1); }

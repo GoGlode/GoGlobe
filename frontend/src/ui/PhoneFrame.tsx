@@ -28,7 +28,6 @@ export default function PhoneFrame() {
   }, []);
 
   const src = `${window.location.pathname}${window.location.search}`;
-  const plain = `${window.location.pathname}?frame=0`;
 
   return (
     <div className="phone-stage">
@@ -45,9 +44,6 @@ export default function PhoneFrame() {
           </div>
         </div>
       </div>
-      <p className="phone-caption">
-        Демо мобильного приложения GoGlobe · <a href={plain}>открыть без рамки</a>
-      </p>
     </div>
   );
 }

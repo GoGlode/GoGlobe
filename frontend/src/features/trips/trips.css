@@ -1,5 +1,5 @@
 /* Шапка закреплена (ui/PageHeader) — на этом экране даём ей фон, чтобы календарь не просвечивал */
-.mytrips-screen .page-header { background: rgba(234, 244, 255, .82); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.mytrips-screen .page-header { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
 .nowrap { white-space: nowrap; }
 .mytrips { display: grid; gap: 16px; padding-bottom: 8px; }
 
@@ -27,7 +27,7 @@
 .cal__day.trip-start::before, .cal__row > .cal__day.in-trip:first-child::before { left: 2px; border-radius: 20px 0 0 20px; }
 .cal__day.trip-end::before, .cal__row > .cal__day.in-trip:last-child::before { right: 2px; border-radius: 0 20px 20px 0; }
 .cal__day.trip-start.trip-end::before { border-radius: 20px; }
-.cal__day.trip-start button, .cal__day.trip-end button { background: var(--grad-primary); color: #fff; box-shadow: var(--shadow-glow); }
+.cal__day.trip-start button, .cal__day.trip-end button { background: #1f86f7; color: #fff; box-shadow: none; }
 
 .cal__day.is-today button::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px;
   border-radius: 50%; background: currentColor; }

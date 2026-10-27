@@ -4,7 +4,7 @@
   background: rgba(255, 255, 255, 0.55); border: 1px solid rgba(255, 255, 255, 0.9); transition: transform .15s; }
 .glassnav__item.is-active:not(.glassnav__item--center) { color: var(--c-primary); background: #fff; }
 .glassnav__item--center { width: 72px; height: 64px; border-radius: 50%; background: var(--grad-primary); color: #fff; border: 0;
-  box-shadow: var(--shadow-glow); }
+  box-shadow: none; }
 .glassnav__item:active { transform: scale(.94); }
 
 /* ── «Переливающееся» стекло: одна линза переезжает под активную иконку (как в Telegram на iOS) ── */
@@ -30,21 +30,20 @@
 .glassnav { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .glassnav__lens { transform-origin: center; will-change: translate; }
 .glassnav__lens.is-dragging { transform: scale(1.14); z-index: 2;
-  box-shadow: var(--lg-edge), 0 12px 26px -6px rgba(7, 135, 249, .35); }
+  box-shadow: var(--lg-edge); }
 .glassnav__lens.is-dragging::after { opacity: .6; background-position: 40% 0; }
 .glassnav .glassnav__item.is-active:not(.glassnav__item--center) { z-index: 3; }
 
 /* Линза нейтральнее: без голубого оттенка заливки, блика и нижней тени */
 .glassnav .glassnav__lens {
-  background: linear-gradient(180deg, rgba(255, 255, 255, .92) 0, rgba(255, 255, 255, .3) 55%, rgba(255, 255, 255, 0) 100%), linear-gradient(180deg, rgba(250, 252, 255, .75), rgba(240, 245, 252, .6));
-  box-shadow: 0 6px 16px -4px rgba(30, 60, 110, .16), 0 1px 2px rgba(16, 36, 72, .06), inset 0 0 0 1px rgba(255, 255, 255, .8), inset 0 1.5px 0 #fff,
-    inset 0 -1px 0 rgba(190, 205, 225, .5), inset 0 -8px 12px -8px rgba(100, 120, 150, .1);
+  background: rgba(255, 255, 255, .78);
+  box-shadow: var(--lg-edge);
 }
-.glassnav .glassnav__lens.is-dragging { box-shadow: 0 12px 26px -6px rgba(30, 60, 110, .25), inset 0 0 0 1px rgba(255, 255, 255, .85), inset 0 1.5px 0 #fff, inset 0 -1px 0 rgba(190, 205, 225, .5); }
+.glassnav .glassnav__lens.is-dragging { box-shadow: var(--lg-edge); }
 
 /* В движении линза прозрачная и без размытия: иконки и синяя кнопка под ней просвечивают, как через настоящее стекло */
 .glassnav .glassnav__lens.is-dragging, .glassnav .glassnav__lens.is-moving {
-  background: linear-gradient(180deg, rgba(255, 255, 255, .55) 0, rgba(255, 255, 255, .08) 55%, rgba(255, 255, 255, 0) 100%), rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .16);
   -webkit-backdrop-filter: saturate(1.25) brightness(1.06); backdrop-filter: saturate(1.25) brightness(1.06);
 }
 .glassnav__lens, .glassnav__lens.is-ready { transition-property: opacity, transform, box-shadow, background; }
@@ -61,7 +60,7 @@
 .nav-draw { display: block; }
 .nav-draw path, .nav-draw circle, .nav-draw rect { stroke-dasharray: 1; stroke-dashoffset: 0; }
 .nav-draw .nav-draw__dots { stroke-dasharray: none; }
-.glassnav__item.is-active .nav-draw path:not(.nav-draw__dots), .glassnav__item.is-active .nav-draw rect { animation: nav-draw .6s cubic-bezier(.4, 0, .2, 1) both; }
+.glassnav__item.is-active .nav-draw path:not(.nav-draw__dots), .glassnav__item.is-active .nav-draw rect, .glassnav__item.is-active .nav-draw circle { animation: nav-draw .6s cubic-bezier(.4, 0, .2, 1) both; }
 .glassnav__item.is-active .nav-draw__2, .glassnav__item.is-active .nav-draw__3 { opacity: 0; }
 .glassnav__item.is-active .nav-draw__2 { animation-delay: .3s !important; animation-duration: .45s !important; }
 .glassnav__item.is-active .nav-draw__3 { animation-delay: .5s !important; animation-duration: .3s !important; }
@@ -69,3 +68,14 @@
 @keyframes nav-draw { 0% { stroke-dashoffset: 1; opacity: 0; } 1% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
 @keyframes nav-dots { 0% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .glassnav__item.is-active .nav-draw * { animation: none !important; } }
+
+/* Центральная кнопка: меньше, круглая, стеклянная; белая линза под ней не нужна, пока она на месте */
+.glassnav .glassnav__item--center { width: 60px; height: 60px; border-radius: 50%;
+  background: rgba(14, 130, 248, .7);
+  -webkit-backdrop-filter: blur(10px) saturate(1.7); backdrop-filter: blur(10px) saturate(1.7);
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .45); }
+.glassnav .glassnav__lens.is-on-center:not(.is-dragging):not(.is-moving) { opacity: 0; box-shadow: none; }
+
+/* Центральная кнопка — тот же плотный синий, что у «Создать путешествие» на главной */
+.glassnav .glassnav__item--center { background: #0a84ff; -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .45); }

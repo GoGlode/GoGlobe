@@ -23,12 +23,11 @@ export default function HotelsTab({ trip: t }: { trip: Trip }) {
       <div className="scroll-x" style={{ padding: "0 var(--s-4) 12px" }}>{FILTERS.map((x) => <button key={x.id} className={`chip ${f === x.id ? "chip--active" : ""}`} onClick={() => setF(x.id)}>{x.label}</button>)}</div>
       {list.length === 0 && <p className="muted" style={{ textAlign: "center", padding: 32 }}>В этом городе нет отелей по выбранному фильтру</p>}
       {list.map((h) => <HotelCard key={h.id} h={h} fav={has(h.id)} onFav={() => toggle(h.id)} />)}
-      {t.demo && <p className="muted tdemo">Демо-данные: цены и рейтинги ориентировочные</p>}
     </>
   );
 }
 
-function HotelCard({ h, fav, onFav }: { h: Hotel; fav: boolean; onFav: () => void }) {
+export function HotelCard({ h, fav, onFav }: { h: Hotel; fav: boolean; onFav: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <article className="hcard">

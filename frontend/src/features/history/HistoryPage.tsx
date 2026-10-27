@@ -7,7 +7,7 @@ import type { Trip } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useHistory } from "../../state/HistoryContext";
 import { useSearch } from "../../state/SearchContext";
-import { Icon, Logo, Photo } from "../../ui";
+import { Icon, PageHeader, Photo } from "../../ui";
 import "./history.css";
 
 type Filter = "all" | "results" | "fav";
@@ -63,14 +63,10 @@ export default function HistoryPage() {
   };
   const repeat = (e: HistoryEntry) => { void run({ query: e.query, params: e.params }); nav("/results"); };
   const edit = (e: HistoryEntry) => { setQuery(e.query); setParams(e.params); nav("/"); };
-  const hasDemo = list.some((e) => e.demo);
 
   return (
     <div className="hist">
-      <header className="hist__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="hist__logo" /></Link>
-      </header>
-      <h1 className="hist__title">История</h1>
+      <PageHeader large title="История" />
       <p className="hist__sub muted">Твои идеи для следующих путешествий</p>
 
       <div className="hist__search glass">
@@ -100,7 +96,6 @@ export default function HistoryPage() {
           </button>
         ))}
       </div>
-      {hasDemo && <p className="hist__demo">Примеры запросов — демонстрационные данные</p>}
 
       {entries.length === 0 ? (
         <Empty title="История пуста" text="Здесь появятся ваши запросы после первого поиска." />
@@ -138,7 +133,7 @@ function HistoryCard({ e, fav, saved, onFav, onOpen, onRepeat, onEdit, onRemove 
       <div className="hcard2__img"><Photo src={e.image} alt="" /></div>
       <div className="hcard2__body">
         <div className="hcard2__head">
-          <span className="hcard2__time"><Icon name="clock" size={16} />{time(e.createdAt)}{e.demo && <span className="hcard2__tag">Пример</span>}</span>
+          <span className="hcard2__time"><Icon name="clock" size={16} />{time(e.createdAt)}</span>
           <button type="button" className={`hcard2__fav ${fav ? "is-on" : ""}`} aria-pressed={fav}
             aria-label={fav ? "Убрать запрос из избранного" : "Добавить запрос в избранное"} onClick={onFav}>
             <Icon name="heart" size={22} filled={fav} />

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { DIRECTIONS, prefSummary } from "../../data/preferences";
 import { MY_TRIPS, getTrip } from "../../data/trips";
 import { useProfile } from "../../state/ProfileContext";
-import { Icon, Photo, type IconName } from "../../ui";
+import { Icon, PageHeader, Photo, type IconName } from "../../ui";
 import Avatar from "./Avatar";
 import "./profile.css";
 
@@ -46,10 +46,7 @@ export default function ProfilePage() {
 
   return (
     <div className="prof">
-      <header className="prof__top">
-        <h1>Профиль</h1>
-        <Link to="/profile/settings" className="circle-btn" aria-label="Настройки"><Icon name="settings" /></Link>
-      </header>
+      <PageHeader large title="Профиль" right={<Link to="/profile/settings" className="circle-btn" aria-label="Настройки"><Icon name="settings" /></Link>} />
 
       {loadError && <p className="prof__alert" role="alert">Не удалось прочитать сохранённые данные. Изменения могут не сохраниться — проверьте настройки браузера.</p>}
 
@@ -71,7 +68,6 @@ export default function ProfilePage() {
         <div className="prof-stats">
           {stats.map((x) => <div key={x.label}><Icon name={x.icon} size={22} /><b>{x.n}</b><small>{x.label}</small></div>)}
         </div>
-        <p className="prof-note">По демо-поездкам приложения</p>
       </section>
 
       <section className="prof-card">

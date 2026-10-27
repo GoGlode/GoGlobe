@@ -13,7 +13,7 @@ export default function FavoritesPage() {
   const list = [...TRIPS, ...found.filter((f) => !TRIPS.some((t) => t.id === f.id))].filter((t) => ids.includes(t.id));
   return (
     <>
-      <PageHeader title="Избранное" />
+      <PageHeader large title="Избранное" />
       {list.length === 0 ? (
         <div className="page fav-empty">
           <div className="circle-btn" style={{ width: 72, height: 72 }}><Icon name="heart" size={30} /></div>

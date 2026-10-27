@@ -23,7 +23,7 @@ function load(): Stored {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (s && Array.isArray(s.own)) return s;
   } catch { /* ignore */ }
-  return { own: [], favs: ["demo-thailand"], hidden: [] };
+  return { own: [], favs: [], hidden: [] };
 }
 
 export function HistoryProvider({ children }: { children: ReactNode }) {

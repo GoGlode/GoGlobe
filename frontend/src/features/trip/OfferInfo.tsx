@@ -38,5 +38,5 @@ export const bookingHint = (t: Trip) => `Ссылки на бронирован�
 export function BookButton({ trip: t, compact }: { trip: Trip; compact?: boolean }) {
   const cls = `btn ${compact ? "btn--sm" : ""}`;
   if (hasBooking(t)) return <a className={cls} href={t.bookingUrl} target="_blank" rel="noopener noreferrer">Забронировать<Icon name="arrow-right" size={18} /></a>;
-  return <span className="book-off"><button type="button" className={`${cls} btn--ghost`} disabled title={bookingHint(t)}>Забронировать</button>{compact && <small>{bookingHint(t)}</small>}</span>;
+  return <span className="book-off"><button type="button" className={`${cls} btn--ghost`} disabled>Забронировать</button></span>;
 }
