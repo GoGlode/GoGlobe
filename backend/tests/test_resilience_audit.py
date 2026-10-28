@@ -2,6 +2,7 @@
 import asyncio
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+import time
 
 import pytest
 from jsonschema.exceptions import ValidationError
@@ -132,9 +133,14 @@ def test_invalid_agent_via_bff_is_controlled_and_does_not_save(tmp_path):
                     headers={"Origin": "http://localhost:8000"}) as client:
         assert client.post("/api/v1/session", json={}).status_code == 200
         result = client.post("/api/v1/searches", json=examples()["plan_request"]["value"], headers={"Idempotency-Key": str(uuid4())})
-        assert result.status_code == 502
-        assert result.json()["error"]["code"] == "AGENT_INVALID_RESPONSE"
-        assert client.get("/api/v1/trips").json()["items"] == []
+        assert result.status_code == 202
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            snapshot = client.get(result.headers["location"]).json()
+            if snapshot["state"] == "failed":
+                break
+            time.sleep(0.01)
+        assert snapshot["error"]["code"] == "AGENT_INVALID_RESPONSE"
         assert client.get("/health").status_code == 200
 
 

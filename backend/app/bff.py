@@ -111,6 +111,8 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         raise ValueError("GOGLOBE_DB_PATH cannot be initialized") from None
     planning_slots = asyncio.Semaphore(16)
     planning_locks = {}
+    background_tasks: set[asyncio.Task] = set()
+    run_tasks: dict[str, asyncio.Task] = {}
     preview_slots = {}
     preview_windows: dict[str, deque[float]] = {}
     preview_rate_lock = asyncio.Lock()
@@ -177,6 +179,23 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         row = db.execute("SELECT owner FROM sessions WHERE token_hash=? AND expires>?", (digest(token), stamp(now()))).fetchone()
         return row["owner"] if row else None
 
+    def purge_expired(db):
+        threshold = stamp(now())
+        db.execute("DELETE FROM sessions WHERE expires<=?", (threshold,))
+        db.execute("DELETE FROM idempotency WHERE expires<=?", (threshold,))
+        db.execute("DELETE FROM operation_claims WHERE expires<=?", (threshold,))
+        db.execute("DELETE FROM search_inputs WHERE expires<=?", (threshold,))
+        db.execute("DELETE FROM objects WHERE expires IS NOT NULL AND expires<=?", (threshold,))
+        db.execute(
+            "DELETE FROM search_runs WHERE NOT EXISTS ("
+            "SELECT 1 FROM objects o WHERE o.kind='search' AND o.id=search_runs.search_id)"
+        )
+        db.execute(
+            "DELETE FROM owners WHERE NOT EXISTS ("
+            "SELECT 1 FROM sessions s WHERE s.owner=owners.id) AND NOT EXISTS ("
+            "SELECT 1 FROM objects o WHERE o.owner=owners.id)"
+        )
+
     def success(schema, body, status=200, location=None):
         validate(schema, body)
         return JSONResponse(body, status_code=status, headers={"Location": location} if location else {})
@@ -217,6 +236,78 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         ):
             snapshot["warnings"].append({"code": "DEMO_DATA", "message": "Демонстрационная программа. Тарифы не запрашивались.", "trip_id": trip["trip_id"]})
         accepted = {"search_id": snapshot["search_id"], "trip_id": trip["trip_id"], "state": "queued", "revision": 1, "expires_at": expiry}
+        return trip, snapshot, accepted
+
+    def build_queued_plan(body):
+        """Create the durable acceptance state before agent work begins."""
+        current = now()
+        expiry = stamp(current + timedelta(days=7))
+        params = body.get("params", {})
+        trip = deepcopy(examples()["trip_draft"]["value"])
+        trip_id = "t_" + uuid4().hex
+        search_id = "s_" + uuid4().hex
+        destination = params.get("destination", "Не выбрано")
+        trip.update(
+            trip_id=trip_id,
+            revision=1,
+            title="Формируем поездку",
+            destination={"name": destination, "timezone": None, "photos": []},
+            duration_days=params.get("duration_days"),
+            schedule={"start_date": None, "end_date": None, "timezone": None},
+            origin=deepcopy(params.get("origin")),
+            travelers=deepcopy(params.get("travelers")),
+            budget=deepcopy(params.get("budget")),
+            wishes=deepcopy(params.get("wishes", [])),
+            created_at=stamp(current),
+            updated_at=stamp(current),
+            expires_at=expiry,
+        )
+        trip["components"]["itinerary"] = {
+            "state": "queued", "missing_fields": [], "error": None,
+            "incomplete": False,
+        }
+        trip["components"]["hotels"]["missing_fields"] = (
+            ["travelers"] if trip["travelers"] is None else []
+        ) + ["stay"]
+        trip["components"]["flights"]["missing_fields"] = (
+            (["origin"] if trip["origin"] is None else [])
+            + (["travelers"] if trip["travelers"] is None else [])
+            + ["flight_dates"]
+        )
+        snapshot = deepcopy(examples()["state_queued"]["value"])
+        snapshot.update(
+            search_id=search_id,
+            trip_id=trip_id,
+            trip_revision=trip["revision"],
+            revision=1,
+            state="queued",
+            stage=None,
+            result_status=None,
+            clarification=None,
+            warnings=[],
+            error=None,
+            created_at=stamp(current),
+            updated_at=stamp(current),
+            expires_at=expiry,
+            requested_components=["itinerary"],
+        )
+        snapshot["components"] = {
+            "itinerary": deepcopy(trip["components"]["itinerary"]),
+            "hotels": {"state": "not_requested", "missing_fields": [],
+                       "error": None, "incomplete": False},
+            "flights": {"state": "not_requested", "missing_fields": [],
+                        "error": None, "incomplete": False},
+        }
+        accepted = {
+            "search_id": search_id,
+            "trip_id": trip_id,
+            "state": "queued",
+            "revision": snapshot["revision"],
+            "expires_at": expiry,
+        }
+        validate("Trip", trip)
+        validate("Snapshot", snapshot)
+        validate("Accepted", accepted)
         return trip, snapshot, accepted
 
     def assign_dates(trip, start, end, zone):
@@ -278,59 +369,11 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         return ("Куда вы хотите поехать?" if field == "destination"
                 else "На сколько дней планируется поездка?")
 
-    def persist_clarification(owner, operation_id, key, fingerprint, body, field,
-                              *, existing_trip=None, existing_snapshot=None):
-        current = now()
-        expiry = stamp(current + timedelta(days=7))
-        if existing_trip is None:
-            trip = deepcopy(examples()["trip_draft"]["value"])
-            trip.update(
-                trip_id="t_" + uuid4().hex, revision=1,
-                destination={"name": body.get("params", {}).get("destination", "Не выбрано"),
-                             "timezone": None, "photos": []},
-                duration_days=body.get("params", {}).get("duration_days"),
-                created_at=stamp(current), updated_at=stamp(current), expires_at=expiry,
-            )
-            snapshot = deepcopy(examples()["state_needs_clarification"]["value"])
-            snapshot.update(
-                search_id="s_" + uuid4().hex, trip_id=trip["trip_id"],
-                trip_revision=trip["revision"], revision=2,
-                created_at=stamp(current), updated_at=stamp(current), expires_at=expiry,
-            )
-        else:
-            trip = deepcopy(existing_trip)
-            snapshot = deepcopy(existing_snapshot)
-            snapshot["revision"] += 1
-            snapshot["updated_at"] = stamp(current)
-        question = {"question_id": "q_" + uuid4().hex, "field": field,
-                    "message": clarification_message(field)}
-        snapshot.update(state="needs_clarification", stage=None, result_status=None,
-                        clarification=question, error=None)
-        validate("Trip", trip)
-        validate("Snapshot", snapshot)
-        accepted = {"search_id": snapshot["search_id"], "trip_id": trip["trip_id"],
-                    "state": "queued",
-                    "revision": 1 if existing_trip is None else snapshot["revision"],
-                    "expires_at": expiry}
-        with database.connect() as db:
-            put(db, "trip", trip, owner)
-            put(db, "search", snapshot, owner)
-            db.execute(
-                "INSERT OR REPLACE INTO search_inputs VALUES(?,?,?,?,?)",
-                (snapshot["search_id"], owner, body["query"],
-                 json.dumps(body.get("params", {}), ensure_ascii=False), expiry),
-            )
-            db.execute("INSERT OR REPLACE INTO idempotency VALUES(?,?,?,?,?,?)",
-                       (owner, operation_id, key, fingerprint,
-                        json.dumps(accepted), stamp(current + timedelta(hours=24))))
-        return success("Accepted", accepted, 202,
-                       f"/api/v1/searches/{snapshot['search_id']}")
-
     async def clarification_request(request, operation, body, query):
         key = request.headers["idempotency-key"]
         fingerprint = digest(json.dumps(body, sort_keys=True, ensure_ascii=False,
                                         separators=(",", ":")))
-        with database.connect() as db:
+        with database.connect(write=False) as db:
             owner = owner_for(db, request)
             if owner is None:
                 raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
@@ -372,51 +415,88 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         else:
             params["destination"] = answer
         request_body = {"query": row["query"], "params": params}
-        try:
-            result = await planning.plan(request_body, now() + timedelta(seconds=timeout))
-        except NeedsClarification as exc:
-            return persist_clarification(
-                owner, operation["operationId"], key, fingerprint, request_body,
-                exc.field, existing_trip=trip, existing_snapshot=snapshot,
-            )
-        except (ValueError, ValidationError, TypeError, AttributeError):
-            raise ApiError(502, "AGENT_INVALID_RESPONSE", "Ответ агента не соответствует контракту")
-        completed_trip, completed_snapshot, _ = build_demo(request_body, result)
-        completed_trip.update(
-            trip_id=trip["trip_id"], revision=trip["revision"] + 1,
-            created_at=trip["created_at"], saved_at=trip["saved_at"],
-            favorite_at=trip["favorite_at"],
-        )
-        completed_snapshot.update(
-            search_id=snapshot["search_id"], trip_id=trip["trip_id"],
-            trip_revision=completed_trip["revision"], revision=snapshot["revision"] + 1,
-            created_at=snapshot["created_at"],
-        )
-        validate("Trip", completed_trip)
-        validate("Snapshot", completed_snapshot)
-        accepted = {"search_id": snapshot["search_id"], "trip_id": trip["trip_id"],
-                    "state": "processing", "revision": completed_snapshot["revision"],
-                    "expires_at": completed_snapshot["expires_at"]}
+        deadline = now() + timedelta(seconds=timeout)
+        run_id = "r_" + uuid4().hex
         with database.connect() as db:
+            replay = db.execute(
+                "SELECT * FROM idempotency WHERE owner=? AND operation=? AND key=? "
+                "AND expires>?",
+                (owner, operation["operationId"], key, stamp(now())),
+            ).fetchone()
+            if replay is not None:
+                if replay["fingerprint"] != fingerprint:
+                    raise ApiError(409, "IDEMPOTENCY_CONFLICT",
+                                   "Ключ уже использован с другим телом запроса")
+                accepted = json.loads(replay["payload"])
+                return success(
+                    "Accepted", accepted, 202,
+                    f"/api/v1/searches/{accepted['search_id']}",
+                )
             latest = get_object(db, "search", snapshot["search_id"], owner)
             if latest["revision"] != snapshot["revision"]:
                 raise ApiError(409, "REVISION_CONFLICT", "Состояние поиска изменилось")
-            put(db, "trip", completed_trip, owner)
-            put(db, "search", completed_snapshot, owner)
-            db.execute("DELETE FROM search_inputs WHERE search_id=? AND owner=?",
-                       (snapshot["search_id"], owner))
-            db.execute("INSERT OR REPLACE INTO idempotency VALUES(?,?,?,?,?,?)",
+            trip["revision"] += 1
+            trip["updated_at"] = stamp(now())
+            trip["components"]["itinerary"] = {
+                "state": "queued", "missing_fields": [], "error": None,
+                "incomplete": False,
+            }
+            snapshot.update(
+                state="queued", stage=None, result_status=None,
+                clarification=None, error=None,
+                trip_revision=trip["revision"],
+                revision=snapshot["revision"] + 1,
+                updated_at=stamp(now()),
+            )
+            snapshot["components"]["itinerary"] = deepcopy(
+                trip["components"]["itinerary"]
+            )
+            validate("Trip", trip)
+            validate("Snapshot", snapshot)
+            accepted = {
+                "search_id": snapshot["search_id"], "trip_id": trip["trip_id"],
+                "state": "queued", "revision": snapshot["revision"],
+                "expires_at": snapshot["expires_at"],
+            }
+            validate("Accepted", accepted)
+            put(db, "trip", trip, owner)
+            put(db, "search", snapshot, owner)
+            db.execute(
+                "UPDATE search_inputs SET params=?, expires=? "
+                "WHERE search_id=? AND owner=?",
+                (json.dumps(params, ensure_ascii=False), snapshot["expires_at"],
+                 snapshot["search_id"], owner),
+            )
+            db.execute(
+                "INSERT INTO search_runs VALUES(?,?,?,?,?,?,?)",
+                (snapshot["search_id"], owner, run_id, "queued",
+                 stamp(deadline), snapshot["revision"], stamp(now())),
+            )
+            db.execute("INSERT INTO idempotency VALUES(?,?,?,?,?,?)",
                        (owner, operation["operationId"], key, fingerprint,
                         json.dumps(accepted), stamp(now() + timedelta(hours=24))))
+        task = spawn_plan_run(
+            owner, snapshot["search_id"], trip["trip_id"], run_id,
+            request_body, deadline,
+        )
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout=0.02)
+        except asyncio.TimeoutError:
+            pass
         return success("Accepted", accepted, 202,
                        f"/api/v1/searches/{snapshot['search_id']}")
 
     async def quote_request(request, operation, body, query):
-        with database.connect() as db:
+        with database.connect(write=False) as db:
             owner = owner_for(db, request)
             if owner is None:
                 raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
             trip = get_object(db, "trip", request.path_params["trip_id"], owner)
+            if trip["itinerary"] is None:
+                raise ApiError(
+                    409, "TRIP_NOT_READY",
+                    "Сначала дождитесь завершения построения маршрута.",
+                )
             key = request.headers["idempotency-key"]
             fingerprint = digest(json.dumps(body, sort_keys=True, ensure_ascii=False,
                                             separators=(",", ":")))
@@ -441,6 +521,69 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             field = required[0]
             raise ApiError(422, "QUOTE_INPUTS_REQUIRED", "Для поиска тарифов нужны явные параметры.",
                            [{"field": field, "message": "Обязательное поле отсутствует"}])
+        claimed = True
+        with database.connect() as db:
+            db.execute(
+                "DELETE FROM operation_claims WHERE owner=? AND operation=? "
+                "AND key=? AND expires<=?",
+                (owner, operation["operationId"], key, stamp(now())),
+            )
+            try:
+                db.execute(
+                    "INSERT INTO operation_claims VALUES(?,?,?,?,?)",
+                    (owner, operation["operationId"], key, fingerprint,
+                     stamp(now() + timedelta(minutes=2))),
+                )
+            except sqlite3.IntegrityError:
+                claim = db.execute(
+                    "SELECT fingerprint FROM operation_claims WHERE owner=? "
+                    "AND operation=? AND key=?",
+                    (owner, operation["operationId"], key),
+                ).fetchone()
+                if claim is not None and claim["fingerprint"] != fingerprint:
+                    raise ApiError(409, "IDEMPOTENCY_CONFLICT",
+                                   "Ключ уже использован с другим телом запроса")
+                claimed = False
+        if not claimed:
+            wait_until = monotonic() + timeout
+            while monotonic() < wait_until:
+                await asyncio.sleep(0.02)
+                with database.connect(write=False) as db:
+                    replay = db.execute(
+                        "SELECT * FROM idempotency WHERE owner=? AND operation=? "
+                        "AND key=? AND expires>?",
+                        (owner, operation["operationId"], key, stamp(now())),
+                    ).fetchone()
+                if replay is not None:
+                    if replay["fingerprint"] != fingerprint:
+                        raise ApiError(
+                            409, "IDEMPOTENCY_CONFLICT",
+                            "Ключ уже использован с другим телом запроса",
+                        )
+                    accepted = json.loads(replay["payload"])
+                    return success(
+                        "Accepted", accepted, 202,
+                        f"/api/v1/searches/{accepted['search_id']}",
+                    )
+            raise ApiError(
+                503, "OPERATION_IN_PROGRESS", "Операция с этим ключом ещё выполняется.",
+                headers={"Retry-After": "1"},
+            )
+
+        def release_claim():
+            try:
+                with database.connect() as db:
+                    db.execute(
+                        "DELETE FROM operation_claims WHERE owner=? AND operation=? "
+                        "AND key=? AND fingerprint=?",
+                        (owner, operation["operationId"], key, fingerprint),
+                    )
+            except sqlite3.Error:
+                logging.getLogger("goglobe").warning(
+                    "Quote claim cleanup failed operation=%s",
+                    operation["operationId"],
+                )
+
         deadline = now() + timedelta(seconds=timeout)
         calls = {}
         if "hotels" in body["components"]:
@@ -453,60 +596,70 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 trip["destination"]["name"], body["origin"],
                 deepcopy(body["flight_dates"]), deepcopy(body["travelers"]),
                 deepcopy(trip.get("budget")), deepcopy(trip.get("wishes", [])), deadline))
-        results = dict(zip(calls, await asyncio.gather(*calls.values())))
-        trip["revision"] += 1
-        trip["updated_at"] = stamp(now())
-        lists = {kind: quote_list(kind, trip, body, result)
-                 for kind, result in results.items()}
-        for kind, value in lists.items():
-            trip["components"][kind] = {
-                "state": value["state"], "missing_fields": [],
-                "error": deepcopy(value["error"]), "incomplete": value["incomplete"],
-            }
-        validate("Trip", trip)
-        current = now()
-        expiry = stamp(current + timedelta(days=7))
-        snapshot = deepcopy(examples()["completed_empty"]["value"])
-        snapshot.update(
-            search_id="s_" + uuid4().hex, trip_id=trip["trip_id"],
-            trip_revision=trip["revision"], revision=2, created_at=stamp(current),
-            updated_at=stamp(current), expires_at=expiry,
-            requested_components=list(body["components"]),
-            data_mode="live" if any(item.data_mode == "live" for item in results.values()) else "demo",
-            warnings=[warning for item in lists.values() for warning in item["warnings"]][:30],
-        )
-        snapshot["components"] = {
-            "itinerary": {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
-            "hotels": deepcopy(trip["components"]["hotels"]) if "hotels" in results else {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
-            "flights": deepcopy(trip["components"]["flights"]) if "flights" in results else {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
-        }
-        states = [value["state"] for value in lists.values()]
-        snapshot["result_status"] = "ok" if "ready" in states else "empty" if all(state == "empty" for state in states) else "partial"
-        validate("Snapshot", snapshot)
-        accepted = {"search_id": snapshot["search_id"], "trip_id": trip["trip_id"],
-                    "state": "queued", "revision": 1, "expires_at": expiry}
-        with database.connect() as db:
-            current_trip = get_object(db, "trip", trip["trip_id"], owner)
-            if current_trip["revision"] != body["expected_revision"]:
-                raise ApiError(409, "REVISION_CONFLICT", "Поездка изменилась во время поиска тарифов.")
-            put(db, "trip", trip, owner)
+        try:
+            results = dict(zip(calls, await asyncio.gather(*calls.values())))
+        except BaseException:
+            release_claim()
+            raise
+        try:
+            trip["revision"] += 1
+            trip["updated_at"] = stamp(now())
+            lists = {kind: quote_list(kind, trip, body, result)
+                     for kind, result in results.items()}
             for kind, value in lists.items():
-                put(db, kind, value, owner)
-            put(db, "search", snapshot, owner)
-            db.execute("INSERT OR REPLACE INTO idempotency VALUES(?,?,?,?,?,?)",
-                       (owner, operation["operationId"], key, fingerprint,
-                        json.dumps(accepted), stamp(now() + timedelta(hours=24))))
+                trip["components"][kind] = {
+                    "state": value["state"], "missing_fields": [],
+                    "error": deepcopy(value["error"]), "incomplete": value["incomplete"],
+                }
+            validate("Trip", trip)
+            current = now()
+            expiry = stamp(current + timedelta(days=7))
+            snapshot = deepcopy(examples()["completed_empty"]["value"])
+            snapshot.update(
+                search_id="s_" + uuid4().hex, trip_id=trip["trip_id"],
+                trip_revision=trip["revision"], revision=2, created_at=stamp(current),
+                updated_at=stamp(current), expires_at=expiry,
+                requested_components=list(body["components"]),
+                data_mode="live" if any(item.data_mode == "live" for item in results.values()) else "demo",
+                warnings=[warning for item in lists.values() for warning in item["warnings"]][:30],
+            )
+            snapshot["components"] = {
+                "itinerary": {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
+                "hotels": deepcopy(trip["components"]["hotels"]) if "hotels" in results else {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
+                "flights": deepcopy(trip["components"]["flights"]) if "flights" in results else {"state": "not_requested", "missing_fields": [], "error": None, "incomplete": False},
+            }
+            states = [value["state"] for value in lists.values()]
+            snapshot["result_status"] = "ok" if "ready" in states else "empty" if all(state == "empty" for state in states) else "partial"
+            validate("Snapshot", snapshot)
+            accepted = {"search_id": snapshot["search_id"], "trip_id": trip["trip_id"],
+                        "state": "queued", "revision": 1, "expires_at": expiry}
+            with database.connect() as db:
+                current_trip = get_object(db, "trip", trip["trip_id"], owner)
+                if current_trip["revision"] != body["expected_revision"]:
+                    raise ApiError(409, "REVISION_CONFLICT", "Поездка изменилась во время поиска тарифов.")
+                put(db, "trip", trip, owner)
+                for kind, value in lists.items():
+                    put(db, kind, value, owner)
+                put(db, "search", snapshot, owner)
+                db.execute("INSERT OR REPLACE INTO idempotency VALUES(?,?,?,?,?,?)",
+                           (owner, operation["operationId"], key, fingerprint,
+                            json.dumps(accepted), stamp(now() + timedelta(hours=24))))
+        except BaseException:
+            release_claim()
+            raise
+        release_claim()
         return success("Accepted", accepted, 202, f"/api/v1/searches/{accepted['search_id']}")
 
-    async def dispatch(request, operation, body, query, prepared_plan=None):
+    async def dispatch(request, operation, body, query):
         operation_id = operation["operationId"]
         if request.method != "GET" and request.headers.get("origin") not in origins:
             raise ApiError(403, "ORIGIN_NOT_ALLOWED", "Origin отсутствует или не разрешён")
-        with database.connect() as db:
+        with database.connect(write=request.method != "GET") as db:
             owner = owner_for(db, request)
             if operation.get("security", specification()["security"]) and owner is None:
                 raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
             if operation_id == "post_session":
+                purge_expired(db)
                 expiry = stamp(now() + timedelta(days=90))
                 token = request.cookies.get("gg_session")
                 if owner is None:
@@ -523,50 +676,96 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 return response
             if operation_id not in IMPLEMENTED:
                 raise ApiError(501, "NOT_IMPLEMENTED", "Операция зарегистрирована как каркас. Бизнес-логика ещё не реализована.")
-            if operation_id == "post_searches":
-                key = request.headers["idempotency-key"]
-                body.setdefault("params", {})
-                fingerprint = digest(json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")))
-                replay = db.execute("SELECT * FROM idempotency WHERE owner=? AND operation=? AND key=? AND expires>?", (owner, operation_id, key, stamp(now()))).fetchone()
-                if replay:
-                    if replay["fingerprint"] != fingerprint:
-                        raise ApiError(409, "IDEMPOTENCY_CONFLICT", "Ключ уже использован с другим телом запроса")
-                    accepted = json.loads(replay["payload"])
-                else:
-                    trip, snapshot, accepted = build_demo(body, prepared_plan)
-                    validate("Trip", trip)
-                    validate("Snapshot", snapshot)
-                    put(db, "trip", trip, owner)
-                    put(db, "search", snapshot, owner)
-                    db.execute("INSERT OR REPLACE INTO idempotency VALUES(?,?,?,?,?,?)", (owner, operation_id, key, fingerprint, json.dumps(accepted), stamp(now() + timedelta(hours=24))))
-                return success("Accepted", accepted, 202, f"/api/v1/searches/{accepted['search_id']}")
             if operation_id == "put_searches_search_id_cancellation":
                 snapshot = get_object(db, "search", request.path_params["search_id"], owner)
                 if snapshot["state"] not in {"completed", "failed", "cancelled"}:
+                    trip = get_object(db, "trip", snapshot["trip_id"], owner)
+                    run = db.execute(
+                        "SELECT run_id FROM search_runs WHERE search_id=? AND owner=? "
+                        "AND state IN ('queued','processing')",
+                        (snapshot["search_id"], owner),
+                    ).fetchone()
                     snapshot["state"] = "cancelled"
                     snapshot["stage"] = None
                     snapshot["result_status"] = None
                     snapshot["clarification"] = None
                     snapshot["revision"] += 1
                     snapshot["updated_at"] = stamp(now())
-                    snapshot["components"]["itinerary"] = {
+                    cancelled_component = {
                         "state": "failed", "missing_fields": [],
                         "error": {"code": "SEARCH_CANCELLED",
                                   "message": "Задача остановлена пользователем.",
                                   "retryable": True, "details": []},
                         "incomplete": False,
                     }
+                    trip["revision"] += 1
+                    trip["updated_at"] = snapshot["updated_at"]
+                    trip["components"]["itinerary"] = deepcopy(cancelled_component)
+                    snapshot["trip_revision"] = trip["revision"]
+                    snapshot["components"]["itinerary"] = cancelled_component
+                    validate("Trip", trip)
                     validate("Snapshot", snapshot)
+                    put(db, "trip", trip, owner)
                     put(db, "search", snapshot, owner)
+                    if run is not None:
+                        db.execute(
+                            "UPDATE search_runs SET state='cancelled', expected_revision=?, "
+                            "updated_at=? WHERE search_id=? AND run_id=?",
+                            (snapshot["revision"], stamp(now()),
+                             snapshot["search_id"], run["run_id"]),
+                        )
+                        task = run_tasks.get(run["run_id"])
+                        if task is not None:
+                            task.cancel()
                     db.execute("DELETE FROM search_inputs WHERE search_id=? AND owner=?",
                                (snapshot["search_id"], owner))
                 return success("Snapshot", snapshot)
             if operation_id in {"get_searches_search_id", "get_searches_search_id_events"}:
                 snapshot = get_object(db, "search", request.path_params["search_id"], owner)
                 if operation_id.endswith("_events"):
+                    session_hash = digest(request.cookies.get("gg_session", ""))
+
                     async def stream():
-                        event = "finished" if snapshot["state"] in {"completed", "failed", "cancelled"} else "snapshot"
-                        yield f"id: {snapshot['revision']}\nevent: {event}\ndata: {json.dumps(snapshot, ensure_ascii=False)}\n\n"
+                        current = snapshot
+                        terminal = {"completed", "failed", "cancelled"}
+                        event = "finished" if current["state"] in terminal else "snapshot"
+                        yield f"id: {current['revision']}\nevent: {event}\ndata: {json.dumps(current, ensure_ascii=False)}\n\n"
+                        if current["state"] in terminal:
+                            return
+                        revision = current["revision"]
+                        heartbeat_at = monotonic()
+                        while not await request.is_disconnected():
+                            await asyncio.sleep(0.2)
+                            with database.connect(write=False) as stream_db:
+                                session_valid = stream_db.execute(
+                                    "SELECT 1 FROM sessions WHERE token_hash=? "
+                                    "AND owner=? AND expires>?",
+                                    (session_hash, owner, stamp(now())),
+                                ).fetchone()
+                                row = stream_db.execute(
+                                    "SELECT payload,expires FROM objects WHERE kind='search' "
+                                    "AND id=? AND owner=?",
+                                    (current["search_id"], owner),
+                                ).fetchone()
+                            if session_valid is None:
+                                return
+                            if row is None or (
+                                row["expires"] is not None
+                                and row["expires"] <= stamp(now())
+                            ):
+                                return
+                            latest = json.loads(row["payload"])
+                            if latest["revision"] > revision:
+                                event = "finished" if latest["state"] in terminal else "update"
+                                yield f"id: {latest['revision']}\nevent: {event}\ndata: {json.dumps(latest, ensure_ascii=False)}\n\n"
+                                revision = latest["revision"]
+                                current = latest
+                                heartbeat_at = monotonic()
+                                if latest["state"] in terminal:
+                                    return
+                            elif monotonic() - heartbeat_at >= 15:
+                                yield ": heartbeat\n\n"
+                                heartbeat_at = monotonic()
                     return StreamingResponse(stream(), media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
                 return success("Snapshot", snapshot)
             if operation_id == "get_trips":
@@ -601,6 +800,11 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 value = json.loads(row["payload"]) if row else blocked_quote_list(kind, trip)
                 return success("HotelList" if kind == "hotels" else "FlightList", value)
             if operation_id == "put_trips_trip_id_schedule":
+                if trip["itinerary"] is None:
+                    raise ApiError(
+                        409, "TRIP_NOT_READY",
+                        "Сначала дождитесь завершения построения маршрута.",
+                    )
                 desired_schedule = {"start_date": body["start_date"], "end_date": body["end_date"],
                                     "timezone": body["timezone"]}
                 if trip["schedule"] == desired_schedule:
@@ -693,6 +897,184 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             return await dispatch(request, operation, body, query)
         return endpoint
 
+    def active_run(db, owner, search_id, run_id):
+        return db.execute(
+            "SELECT * FROM search_runs WHERE search_id=? AND owner=? AND run_id=? "
+            "AND state IN ('queued','processing')",
+            (search_id, owner, run_id),
+        ).fetchone()
+
+    def fail_run(owner, search_id, run_id, code, message, retryable):
+        with database.connect() as db:
+            run = active_run(db, owner, search_id, run_id)
+            if run is None:
+                return
+            snapshot = get_object(db, "search", search_id, owner)
+            if snapshot["state"] in {"completed", "failed", "cancelled"}:
+                return
+            trip = get_object(db, "trip", snapshot["trip_id"], owner)
+            error = {"code": code, "message": message,
+                     "retryable": retryable, "details": []}
+            trip["revision"] += 1
+            trip["updated_at"] = stamp(now())
+            trip["components"]["itinerary"] = {
+                "state": "failed", "missing_fields": [],
+                "error": deepcopy(error), "incomplete": False,
+            }
+            snapshot.update(
+                state="failed", stage=None, result_status=None,
+                clarification=None, error=deepcopy(error),
+                trip_revision=trip["revision"],
+                revision=snapshot["revision"] + 1,
+                updated_at=stamp(now()),
+            )
+            snapshot["components"]["itinerary"] = deepcopy(
+                trip["components"]["itinerary"]
+            )
+            validate("Trip", trip)
+            validate("Snapshot", snapshot)
+            put(db, "trip", trip, owner)
+            put(db, "search", snapshot, owner)
+            db.execute(
+                "UPDATE search_runs SET state='failed', expected_revision=?, "
+                "updated_at=? WHERE search_id=? AND run_id=?",
+                (snapshot["revision"], stamp(now()), search_id, run_id),
+            )
+
+    async def execute_plan_run(owner, search_id, trip_id, run_id, body, deadline):
+        try:
+            with database.connect() as db:
+                run = active_run(db, owner, search_id, run_id)
+                if run is None:
+                    return
+                snapshot = get_object(db, "search", search_id, owner)
+                if snapshot["state"] == "queued":
+                    snapshot.update(
+                        state="processing", stage="itinerary",
+                        revision=snapshot["revision"] + 1,
+                        updated_at=stamp(now()),
+                    )
+                    snapshot["components"]["itinerary"]["state"] = "processing"
+                    validate("Snapshot", snapshot)
+                    put(db, "search", snapshot, owner)
+                db.execute(
+                    "UPDATE search_runs SET state='processing', expected_revision=?, "
+                    "updated_at=? WHERE search_id=? AND run_id=?",
+                    (snapshot["revision"], stamp(now()), search_id, run_id),
+                )
+            remaining = (deadline - now()).total_seconds()
+            if remaining <= 0:
+                raise TimeoutError("Run deadline expired")
+            async with asyncio.timeout(remaining):
+                async with planning_slots:
+                    result = await planning.plan(body, deadline)
+            with database.connect() as db:
+                run = active_run(db, owner, search_id, run_id)
+                if run is None:
+                    return
+                current_snapshot = get_object(db, "search", search_id, owner)
+                current_trip = get_object(db, "trip", trip_id, owner)
+                completed_trip, completed_snapshot, _ = build_demo(body, result)
+                completed_trip.update(
+                    trip_id=trip_id,
+                    revision=current_trip["revision"] + 1,
+                    created_at=current_trip["created_at"],
+                    saved_at=current_trip["saved_at"],
+                    favorite_at=current_trip["favorite_at"],
+                    expires_at=current_trip["expires_at"],
+                )
+                completed_snapshot.update(
+                    search_id=search_id,
+                    trip_id=trip_id,
+                    trip_revision=completed_trip["revision"],
+                    revision=current_snapshot["revision"] + 1,
+                    created_at=current_snapshot["created_at"],
+                    expires_at=current_snapshot["expires_at"],
+                )
+                validate("Trip", completed_trip)
+                validate("Snapshot", completed_snapshot)
+                put(db, "trip", completed_trip, owner)
+                put(db, "search", completed_snapshot, owner)
+                db.execute(
+                    "UPDATE search_runs SET state='completed', expected_revision=?, "
+                    "updated_at=? WHERE search_id=? AND run_id=?",
+                    (completed_snapshot["revision"], stamp(now()), search_id, run_id),
+                )
+                db.execute(
+                    "DELETE FROM search_inputs WHERE search_id=? AND owner=?",
+                    (search_id, owner),
+                )
+        except NeedsClarification as exc:
+            with database.connect() as db:
+                run = active_run(db, owner, search_id, run_id)
+                if run is None:
+                    return
+                snapshot = get_object(db, "search", search_id, owner)
+                trip = get_object(db, "trip", trip_id, owner)
+                question = {
+                    "question_id": "q_" + uuid4().hex,
+                    "field": exc.field,
+                    "message": clarification_message(exc.field),
+                }
+                snapshot.update(
+                    state="needs_clarification", stage=None,
+                    result_status=None, clarification=question, error=None,
+                    revision=snapshot["revision"] + 1,
+                    updated_at=stamp(now()),
+                )
+                snapshot["components"]["itinerary"] = {
+                    "state": "blocked", "missing_fields": [exc.field],
+                    "error": None, "incomplete": False,
+                }
+                trip["revision"] += 1
+                trip["updated_at"] = stamp(now())
+                trip["components"]["itinerary"] = deepcopy(
+                    snapshot["components"]["itinerary"]
+                )
+                snapshot["trip_revision"] = trip["revision"]
+                validate("Trip", trip)
+                validate("Snapshot", snapshot)
+                put(db, "trip", trip, owner)
+                put(db, "search", snapshot, owner)
+                db.execute(
+                    "UPDATE search_runs SET state='needs_clarification', "
+                    "expected_revision=?, updated_at=? WHERE search_id=? AND run_id=?",
+                    (snapshot["revision"], stamp(now()), search_id, run_id),
+                )
+        except asyncio.CancelledError:
+            return
+        except (TimeoutError, asyncio.TimeoutError):
+            fail_run(owner, search_id, run_id, "SEARCH_TIMEOUT",
+                     "Агент не ответил в пределах общего срока", True)
+        except UnsupportedDemo:
+            fail_run(owner, search_id, run_id, "MOCK_SCENARIO_UNSUPPORTED",
+                     "Демонстрационный планировщик не поддерживает запрос", False)
+        except (ValueError, ValidationError, TypeError, AttributeError):
+            fail_run(owner, search_id, run_id, "AGENT_INVALID_RESPONSE",
+                     "Ответ агента не соответствует контракту", False)
+        except Exception as exc:
+            logging.getLogger("goglobe").warning(
+                "Agent run failed search_id=%s run_id=%s error_type=%s",
+                search_id, run_id, type(exc).__name__,
+            )
+            fail_run(owner, search_id, run_id, "AGENT_UNAVAILABLE",
+                     "Агент временно недоступен", True)
+
+    def spawn_plan_run(owner, search_id, trip_id, run_id, body, deadline):
+        task = asyncio.create_task(
+            execute_plan_run(owner, search_id, trip_id, run_id, body, deadline)
+        )
+        background_tasks.add(task)
+        run_tasks[run_id] = task
+
+        def cleanup(done):
+            background_tasks.discard(done)
+            if run_tasks.get(run_id) is done:
+                run_tasks.pop(run_id, None)
+
+        task.add_done_callback(cleanup)
+        return task
+
     async def plan_request(request, operation, body, query):
         body.setdefault("params", {})
         params = body["params"]
@@ -702,66 +1084,75 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             days = (date.fromisoformat(params["dates"]["end_date"]) - date.fromisoformat(params["dates"]["start_date"])).days + 1
             if days <= 0 or ("duration_days" in params and days != params["duration_days"]):
                 raise ApiError(422, "DURATION_CONFLICT", "Даты и длительность противоречат друг другу")
-        with database.connect() as db:
+        key = request.headers["idempotency-key"]
+        fingerprint = digest(json.dumps(
+            body, sort_keys=True, ensure_ascii=False, separators=(",", ":"),
+        ))
+        with database.connect(write=False) as db:
             owner = owner_for(db, request)
         if owner is None:
             raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
-        lock_key = (owner, request.headers["idempotency-key"])
-        deadline = now() + timedelta(seconds=timeout)
+        lock_key = (owner, key)
+        lock, count = planning_locks.get(lock_key, (asyncio.Lock(), 0))
+        planning_locks[lock_key] = (lock, count + 1)
         try:
-            async with asyncio.timeout(timeout) as request_budget:
-                async with planning_slots:
-                    lock, count = planning_locks.get(lock_key, (asyncio.Lock(), 0))
-                    planning_locks[lock_key] = (lock, count + 1)
-                    try:
-                        async with lock:
-                            with database.connect() as db:
-                                replay = db.execute("SELECT payload FROM idempotency WHERE owner=? AND operation='post_searches' AND key=? AND expires>?", (owner, lock_key[1], stamp(now()))).fetchone()
-                            if replay is not None:
-                                # dispatch проверит fingerprint и доступ, вернёт исходный Accepted.
-                                return await dispatch(request, operation, body, query)
-                            try:
-                                result = await planning.plan(body, deadline)
-                            except NeedsClarification as exc:
-                                key = request.headers["idempotency-key"]
-                                fingerprint = digest(json.dumps(
-                                    body, sort_keys=True, ensure_ascii=False,
-                                    separators=(",", ":"),
-                                ))
-                                return persist_clarification(
-                                    owner, operation["operationId"], key,
-                                    fingerprint, body, exc.field,
-                                )
-                            except (UnsupportedDemo, TimeoutError):
-                                raise
-                            except (ValueError, ValidationError, TypeError, AttributeError) as exc:
-                                logging.getLogger("goglobe").warning(
-                                    "Agent response rejected request_id=%s error_type=%s",
-                                    request.state.request_id, type(exc).__name__,
-                                )
-                                raise ApiError(502, "AGENT_INVALID_RESPONSE", "Ответ агента не соответствует контракту")
-                            except Exception as exc:
-                                logging.getLogger("goglobe").warning(
-                                    "Agent unavailable request_id=%s error_type=%s",
-                                    request.state.request_id, type(exc).__name__,
-                                )
-                                raise ApiError(503, "AGENT_UNAVAILABLE", "Агент временно недоступен")
-                            if request_budget.expired():
-                                raise TimeoutError("Request deadline expired")
-                            return await dispatch(request, operation, body, query, result)
-                    finally:
-                        current_lock, count = planning_locks[lock_key]
-                        if count == 1:
-                            del planning_locks[lock_key]
-                        else:
-                            planning_locks[lock_key] = (current_lock, count - 1)
-        except UnsupportedDemo as exc:
-            raise ApiError(422, "MOCK_SCENARIO_UNSUPPORTED", str(exc))
-        except TimeoutError:
-            logging.getLogger("goglobe").warning(
-                "Agent deadline exceeded request_id=%s", request.state.request_id,
-            )
-            raise ApiError(503, "AGENT_TIMEOUT", "Агент не ответил в пределах общего срока")
+            async with lock:
+                with database.connect() as db:
+                    current_owner = owner_for(db, request)
+                    if current_owner != owner:
+                        raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
+                    replay = db.execute(
+                        "SELECT * FROM idempotency WHERE owner=? AND operation=? "
+                        "AND key=? AND expires>?",
+                        (owner, operation["operationId"], key, stamp(now())),
+                    ).fetchone()
+                    if replay is not None:
+                        if replay["fingerprint"] != fingerprint:
+                            raise ApiError(409, "IDEMPOTENCY_CONFLICT",
+                                           "Ключ уже использован с другим телом запроса")
+                        accepted = json.loads(replay["payload"])
+                        return success(
+                            "Accepted", accepted, 202,
+                            f"/api/v1/searches/{accepted['search_id']}",
+                        )
+                    trip, snapshot, accepted = build_queued_plan(body)
+                    run_id = "r_" + uuid4().hex
+                    deadline = now() + timedelta(seconds=timeout)
+                    put(db, "trip", trip, owner)
+                    put(db, "search", snapshot, owner)
+                    db.execute(
+                        "INSERT INTO search_inputs VALUES(?,?,?,?,?)",
+                        (accepted["search_id"], owner, body["query"],
+                         json.dumps(params, ensure_ascii=False), accepted["expires_at"]),
+                    )
+                    db.execute(
+                        "INSERT INTO search_runs VALUES(?,?,?,?,?,?,?)",
+                        (accepted["search_id"], owner, run_id, "queued",
+                         stamp(deadline), snapshot["revision"], stamp(now())),
+                    )
+                    db.execute(
+                        "INSERT INTO idempotency VALUES(?,?,?,?,?,?)",
+                        (owner, operation["operationId"], key, fingerprint,
+                         json.dumps(accepted), stamp(now() + timedelta(hours=24))),
+                    )
+                task = spawn_plan_run(
+                    owner, accepted["search_id"], accepted["trip_id"],
+                    run_id, deepcopy(body), deadline,
+                )
+                try:
+                    await asyncio.wait_for(asyncio.shield(task), timeout=0.02)
+                except asyncio.TimeoutError:
+                    pass
+                return success(
+                    "Accepted", accepted, 202,
+                    f"/api/v1/searches/{accepted['search_id']}",
+                )
+        finally:
+            current_lock, count = planning_locks[lock_key]
+            if count == 1:
+                del planning_locks[lock_key]
+            else:
+                planning_locks[lock_key] = (current_lock, count - 1)
 
     @app.post("/api/v1/intent/preview", include_in_schema=False)
     async def intent_preview(request: Request):
@@ -769,15 +1160,17 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             raise ApiError(403, "ORIGIN_NOT_ALLOWED", "Origin отсутствует или не разрешён")
         if request.headers.get("content-type", "").split(";", 1)[0].lower() != "application/json":
             raise ApiError(415, "UNSUPPORTED_MEDIA_TYPE", "Требуется application/json")
-        with database.connect() as db:
+        with database.connect(write=False) as db:
             owner = owner_for(db, request)
         if owner is None:
             raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
-        raw_body = await request.body()
-        if len(raw_body) > 65536:
-            raise ApiError(413, "REQUEST_TOO_LARGE", "JSON не должен превышать 64 КиБ")
+        raw_body = bytearray()
+        async for chunk in request.stream():
+            raw_body.extend(chunk)
+            if len(raw_body) > 65536:
+                raise ApiError(413, "REQUEST_TOO_LARGE", "JSON не должен превышать 64 КиБ")
         try:
-            body = trim(json.loads(raw_body.decode("utf-8"),
+            body = trim(json.loads(bytes(raw_body).decode("utf-8"),
                                    parse_constant=reject_json_constant,
                                    object_pairs_hook=unique_json_object))
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -902,7 +1295,7 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
     @app.get("/health", include_in_schema=False)
     async def health():
         try:
-            with database.connect() as db:
+            with database.connect(write=False) as db:
                 db.execute("SELECT 1 FROM owners LIMIT 1").fetchone()
         except sqlite3.Error as exc:
             logging.getLogger("goglobe").warning(
@@ -914,5 +1307,43 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         provider_mode = getattr(policy, "provider_mode", "snapshot")
         return {"status": "ok", "mode": provider_mode, "contract": "0.3.1", "storage": "sqlite",
                 "implemented_operations": len(IMPLEMENTED), "scaffold_operations": 28 - len(IMPLEMENTED)}
+
+    async def resume_pending_runs():
+        with database.connect() as db:
+            purge_expired(db)
+            # Quote claims are process-local leases. After a restart there is no
+            # surviving request that could publish their idempotent result.
+            db.execute("DELETE FROM operation_claims")
+            rows = db.execute(
+                "SELECT r.*, i.query, i.params, o.payload AS snapshot_payload "
+                "FROM search_runs r "
+                "JOIN search_inputs i ON i.search_id=r.search_id AND i.owner=r.owner "
+                "JOIN objects o ON o.kind='search' AND o.id=r.search_id AND o.owner=r.owner "
+                "WHERE r.state IN ('queued','processing')"
+            ).fetchall()
+        for row in rows:
+            deadline = datetime.fromisoformat(row["deadline_at"].replace("Z", "+00:00"))
+            if deadline <= now():
+                fail_run(
+                    row["owner"], row["search_id"], row["run_id"],
+                    "SEARCH_TIMEOUT", "Срок выполнения задачи истёк", True,
+                )
+                continue
+            snapshot = json.loads(row["snapshot_payload"])
+            body = {"query": row["query"], "params": json.loads(row["params"])}
+            spawn_plan_run(
+                row["owner"], row["search_id"], snapshot["trip_id"],
+                row["run_id"], body, deadline,
+            )
+
+    async def stop_background_runs():
+        tasks = list(background_tasks)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    app.router.add_event_handler("startup", resume_pending_runs)
+    app.router.add_event_handler("shutdown", stop_background_runs)
 
     return app

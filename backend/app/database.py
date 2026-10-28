@@ -21,17 +21,28 @@ class Database:
                     owner TEXT NOT NULL, operation TEXT NOT NULL, key TEXT NOT NULL,
                     fingerprint TEXT NOT NULL, payload TEXT NOT NULL,
                     expires TEXT NOT NULL, PRIMARY KEY(owner,operation,key));
+                CREATE TABLE IF NOT EXISTS operation_claims(
+                    owner TEXT NOT NULL, operation TEXT NOT NULL, key TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL, expires TEXT NOT NULL,
+                    PRIMARY KEY(owner,operation,key));
                 CREATE TABLE IF NOT EXISTS search_inputs(
                     search_id TEXT PRIMARY KEY, owner TEXT NOT NULL, query TEXT NOT NULL,
                     params TEXT NOT NULL, expires TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS search_runs(
+                    search_id TEXT NOT NULL, owner TEXT NOT NULL, run_id TEXT NOT NULL,
+                    state TEXT NOT NULL, deadline_at TEXT NOT NULL,
+                    expected_revision INTEGER NOT NULL, updated_at TEXT NOT NULL,
+                    PRIMARY KEY(search_id,run_id));
+                CREATE INDEX IF NOT EXISTS idx_search_runs_state
+                    ON search_runs(state, deadline_at);
             """)
 
     @contextmanager
-    def connect(self):
+    def connect(self, *, write: bool = True):
         db = sqlite3.connect(self.path, timeout=0.25)
         db.row_factory = sqlite3.Row
         try:
-            db.execute("BEGIN IMMEDIATE")
+            db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
             yield db
             db.commit()
         except BaseException:

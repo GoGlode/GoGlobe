@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from threading import Thread
+import time
 from uuid import uuid4
 
 import httpx
@@ -247,17 +248,32 @@ def test_bff_gateway_failure_save_and_restart(tmp_path, failed_kind):
             key = {"Idempotency-Key": str(uuid4())}
             response = client.post("/api/v1/searches", json=examples()["plan_request"]["value"], headers=key)
             if failed_kind == "destinations":
-                assert response.status_code == 503
-                assert client.get("/api/v1/trips").json()["items"] == []
+                assert response.status_code == 202
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    failed = client.get(response.headers["location"]).json()
+                    if failed["state"] == "failed":
+                        break
+                    time.sleep(0.01)
+                assert failed["error"]["code"] == "AGENT_UNAVAILABLE"
                 failures.clear()
-                response = client.post("/api/v1/searches", json=examples()["plan_request"]["value"], headers=key)
+                response = client.post(
+                    "/api/v1/searches", json=examples()["plan_request"]["value"],
+                    headers={"Idempotency-Key": str(uuid4())},
+                )
             assert response.status_code == 202, response.text
             accepted = response.json()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                snapshot = client.get(response.headers["location"]).json()
+                if snapshot["state"] == "completed":
+                    break
+                time.sleep(0.01)
+            assert snapshot["state"] == "completed"
             trip_url = "/api/v1/trips/" + accepted["trip_id"]
             trip = client.get(trip_url).json()
             assert trip["sources"][0]["source_id"] == "demo_rome_catalog"
             assert trip["price_summary"]["money"] is None
-            snapshot = client.get(response.headers["location"]).json()
             if failed_kind in {"hotels", "flights"}:
                 assert "PROVIDER_HTTP_ERROR" in {warning["code"] for warning in snapshot["warnings"]}
             assert "private-upstream-body" not in json.dumps(snapshot)

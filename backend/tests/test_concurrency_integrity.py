@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import sqlite3
 from threading import Barrier, BrokenBarrierError, Event, Lock
+import time
 from uuid import uuid4
 
 import httpx
@@ -42,6 +43,17 @@ def counts(path):
     return objects, idempotency
 
 
+def wait_snapshot(client, location, states, timeout=5):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        response = client.get(location)
+        assert response.status_code == 200
+        if response.json()["state"] in states:
+            return response.json()
+        time.sleep(0.01)
+    raise AssertionError(f"search did not reach {states}")
+
+
 class GatedAgent:
     def __init__(self):
         self.started = Event()
@@ -55,6 +67,130 @@ class GatedAgent:
         self.started.set()
         await asyncio.to_thread(self.release.wait)
         return await DemoPlanner().plan(context)
+
+
+def test_post_accepts_before_agent_finishes_and_persists_run_id(tmp_path):
+    path = str(tmp_path / "durable-run.sqlite3")
+    agent = GatedAgent()
+    with TestClient(create_app(path, agent=agent), headers=DEFAULT_HEADERS) as client:
+        login(client)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(search, client, str(uuid4()))
+            assert agent.started.wait(timeout=5)
+            response = future.result(timeout=1)
+            assert response.status_code == 202
+            with sqlite3.connect(path) as db:
+                run = db.execute(
+                    "SELECT run_id,state FROM search_runs WHERE search_id=?",
+                    (response.json()["search_id"],),
+                ).fetchone()
+            assert run[0].startswith("r_")
+            assert run[1] == "processing"
+            snapshot = client.get(response.headers["location"]).json()
+            assert snapshot["state"] == "processing"
+            agent.release.set()
+        completed = wait_snapshot(client, response.headers["location"], {"completed"})
+        assert completed["revision"] > snapshot["revision"]
+
+
+def test_draft_rejects_itinerary_mutations_and_keeps_saved_expiry(tmp_path):
+    path = str(tmp_path / "draft-mutations.sqlite3")
+    agent = GatedAgent()
+    with TestClient(create_app(path, agent=agent), headers=DEFAULT_HEADERS) as client:
+        login(client)
+        response = search(client, str(uuid4()))
+        assert response.status_code == 202
+        assert agent.started.wait(timeout=5)
+        trip_url = f"/api/v1/trips/{response.json()['trip_id']}"
+        draft = client.get(trip_url).json()
+        assert draft["itinerary"] is None
+
+        schedule = client.put(
+            trip_url + "/schedule",
+            json={
+                "expected_revision": draft["revision"],
+                "start_date": "2026-11-10",
+                "end_date": "2026-11-11",
+                "timezone": "Europe/Rome",
+            },
+        )
+        assert schedule.status_code == 409
+        assert schedule.json()["error"]["code"] == "TRIP_NOT_READY"
+
+        quote = deepcopy(examples()["quote_request"]["value"])
+        quote["expected_revision"] = draft["revision"]
+        quoted = client.post(
+            trip_url + "/quote-searches",
+            json=quote,
+            headers={"Idempotency-Key": str(uuid4())},
+        )
+        assert quoted.status_code == 409
+        assert quoted.json()["error"]["code"] == "TRIP_NOT_READY"
+
+        saved = client.put(trip_url + "/saved", json={})
+        assert saved.status_code == 200
+        assert saved.json()["expires_at"] is None
+        agent.release.set()
+        wait_snapshot(client, response.headers["location"], {"completed"})
+        completed = client.get(trip_url).json()
+        assert completed["saved_at"] is not None
+        assert completed["expires_at"] is None
+
+
+def test_restart_resumes_persisted_processing_run(tmp_path):
+    path = str(tmp_path / "resume-run.sqlite3")
+
+    class NeverFinishes:
+        def __init__(self):
+            self.started = Event()
+
+        async def plan(self, context):
+            self.started.set()
+            await asyncio.Event().wait()
+
+    blocked = NeverFinishes()
+    with TestClient(create_app(path, agent=blocked), headers=DEFAULT_HEADERS) as first:
+        cookies = login(first)
+        accepted = search(first, str(uuid4()))
+        assert accepted.status_code == 202
+        assert blocked.started.wait(timeout=2)
+        assert first.get(accepted.headers["location"]).json()["state"] == "processing"
+        location = accepted.headers["location"]
+
+    with TestClient(
+        create_app(path), headers=DEFAULT_HEADERS, cookies=cookies,
+    ) as restarted:
+        snapshot = wait_snapshot(restarted, location, {"completed"})
+        assert snapshot["state"] == "completed"
+        with sqlite3.connect(path) as db:
+            state = db.execute(
+                "SELECT state FROM search_runs WHERE search_id=? ORDER BY updated_at DESC",
+                (accepted.json()["search_id"],),
+            ).fetchone()[0]
+        assert state == "completed"
+
+
+def test_session_creation_physically_purges_expired_private_rows(tmp_path):
+    path = str(tmp_path / "purge.sqlite3")
+    with TestClient(create_app(path), headers=DEFAULT_HEADERS) as client:
+        login(client)
+        accepted = search(
+            client, str(uuid4()), {"query": "Хочу путешествие"},
+        )
+        assert accepted.status_code == 202
+        wait_snapshot(client, accepted.headers["location"], {"needs_clarification"})
+        expired = stamp(datetime.now(timezone.utc) - timedelta(days=1))
+        with sqlite3.connect(path) as db:
+            db.execute("UPDATE sessions SET expires=?", (expired,))
+            db.execute("UPDATE objects SET expires=?", (expired,))
+            db.execute("UPDATE idempotency SET expires=?", (expired,))
+            db.execute("UPDATE search_inputs SET expires=?", (expired,))
+        assert client.post("/api/v1/session", json={}).status_code == 200
+        with sqlite3.connect(path) as db:
+            assert db.execute("SELECT count(*) FROM objects").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM idempotency").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM search_inputs").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM search_runs").fetchone()[0] == 0
 
 
 def test_same_process_simultaneous_same_key_creates_one_trip(tmp_path):
@@ -117,7 +253,7 @@ def test_separate_app_instances_race_same_key_without_duplicate_write(tmp_path):
             start.wait(timeout=5)
             responses = [future.result(timeout=10) for future in futures]
 
-    assert len(calls) == 2  # no cross-process in-memory single-flight is claimed
+    assert len(calls) == 1  # durable acceptance prevents duplicate provider/agent work
     assert all(response.status_code == 202 for response in responses)
     assert responses[0].json() == responses[1].json()
     assert counts(path) == ({"search": 1, "trip": 1}, 1)
@@ -182,7 +318,7 @@ def test_idempotency_conflict_preserves_original_result(tmp_path):
 
 
 @pytest.mark.parametrize("failure", ["error", "timeout"])
-def test_agent_failure_or_timeout_leaves_no_partial_rows(tmp_path, failure):
+def test_agent_failure_or_timeout_persists_terminal_snapshot(tmp_path, failure):
     path = str(tmp_path / f"agent-{failure}.sqlite3")
 
     class Agent:
@@ -199,15 +335,16 @@ def test_agent_failure_or_timeout_leaves_no_partial_rows(tmp_path, failure):
     ) as client:
         login(client)
         response = search(client, str(uuid4()))
-        assert response.status_code == 503
-        assert response.json()["error"]["code"] == (
-            "AGENT_TIMEOUT" if failure == "timeout" else "AGENT_UNAVAILABLE"
+        assert response.status_code == 202
+        snapshot = wait_snapshot(client, response.headers["location"], {"failed"})
+        assert snapshot["error"]["code"] == (
+            "SEARCH_TIMEOUT" if failure == "timeout" else "AGENT_UNAVAILABLE"
         )
-        assert counts(path) == ({}, 0)
-        assert client.get("/api/v1/trips").json()["items"] == []
+        assert counts(path) == ({"search": 1, "trip": 1}, 1)
+        assert len(client.get("/api/v1/trips").json()["items"]) == 1
 
 
-def test_cancelled_request_before_agent_completion_writes_nothing_and_key_retries(tmp_path):
+def test_api_cancellation_invalidates_run_and_blocks_late_write(tmp_path):
     path = str(tmp_path / "cancelled.sqlite3")
 
     class Agent:
@@ -234,31 +371,32 @@ def test_cancelled_request_before_agent_completion_writes_nothing_and_key_retrie
         ) as client:
             assert (await client.post("/api/v1/session", json={})).status_code == 200
             key = str(uuid4())
-            request = asyncio.create_task(client.post(
-                "/api/v1/searches",
-                json=deepcopy(examples()["plan_request"]["value"]),
-                headers={"Idempotency-Key": key},
-            ))
-            await asyncio.wait_for(agent.started.wait(), timeout=5)
-            request.cancel()
-            with pytest.raises(asyncio.CancelledError):
-                await request
-            await asyncio.wait_for(agent.cancelled.wait(), timeout=5)
-            assert counts(path) == ({}, 0)
-
-            agent.block = False
-            retry = await client.post(
+            response = await client.post(
                 "/api/v1/searches",
                 json=deepcopy(examples()["plan_request"]["value"]),
                 headers={"Idempotency-Key": key},
             )
-            assert retry.status_code == 202
+            assert response.status_code == 202
+            await asyncio.wait_for(agent.started.wait(), timeout=5)
+            cancelled = await client.put(response.headers["location"] + "/cancellation", json={})
+            assert cancelled.status_code == 200
+            assert cancelled.json()["state"] == "cancelled"
+            await asyncio.wait_for(agent.cancelled.wait(), timeout=5)
             assert counts(path) == ({"search": 1, "trip": 1}, 1)
+            agent.block = False
+            replay = await client.post(
+                "/api/v1/searches",
+                json=deepcopy(examples()["plan_request"]["value"]),
+                headers={"Idempotency-Key": key},
+            )
+            assert replay.status_code == 202
+            assert replay.json() == response.json()
+            assert (await client.get(response.headers["location"])).json()["state"] == "cancelled"
 
     asyncio.run(scenario())
 
 
-def test_session_expiring_while_agent_is_running_prevents_commit(tmp_path):
+def test_session_expiring_after_acceptance_does_not_orphan_run(tmp_path):
     path = str(tmp_path / "session-expires-during-plan.sqlite3")
     agent = GatedAgent()
     with TestClient(create_app(path, agent=agent), headers=DEFAULT_HEADERS) as client:
@@ -275,9 +413,20 @@ def test_session_expiring_while_agent_is_running_prevents_commit(tmp_path):
             agent.release.set()
             response = future.result(timeout=5)
 
-        assert response.status_code == 403
-        assert response.json()["error"]["code"] == "SESSION_REQUIRED"
-        assert counts(path) == ({}, 0)
+        assert response.status_code == 202
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            with sqlite3.connect(path) as db:
+                payload = db.execute(
+                    "SELECT payload FROM objects WHERE kind='search' AND id=?",
+                    (response.json()["search_id"],),
+                ).fetchone()
+            if payload and '"state": "completed"' in payload[0]:
+                break
+            time.sleep(0.01)
+        else:
+            raise AssertionError("accepted run was orphaned after session expiry")
+        assert counts(path) == ({"search": 1, "trip": 1}, 1)
 
 
 def test_simultaneous_save_unsave_and_schedule_are_serializable(tmp_path):
@@ -464,7 +613,7 @@ def test_sqlite_failure_rolls_back_trip_snapshot_and_idempotency(tmp_path):
         assert counts(path) == ({"search": 1, "trip": 1}, 1)
 
 
-def test_parallel_locked_database_requests_are_controlled_not_500(tmp_path):
+def test_parallel_reads_continue_while_an_uncommitted_writer_holds_reservation(tmp_path):
     path = str(tmp_path / "locked.sqlite3")
     with ExitStack() as stack:
         first = stack.enter_context(TestClient(create_app(path), headers=DEFAULT_HEADERS))
@@ -486,9 +635,8 @@ def test_parallel_locked_database_requests_are_controlled_not_500(tmp_path):
                 start.wait(timeout=5)
                 responses = [future.result(timeout=10) for future in futures]
 
-        assert all(response.status_code == 503 for response in responses)
-        assert all(response.json()["error"]["code"] == "STORAGE_BUSY" for response in responses)
-        assert all(response.status_code != 500 for response in responses)
+        assert all(response.status_code == 200 for response in responses)
+        assert all(response.json()["items"] == [] for response in responses)
         assert first.get("/api/v1/trips").status_code == 200
 
 

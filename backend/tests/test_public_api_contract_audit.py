@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import time
 from uuid import uuid4
 
 import httpx
@@ -74,9 +75,13 @@ def client(tmp_path):
 def test_approved_contract_hashes_are_unchanged():
     root = Path(__file__).parents[1]
     manifest = json.loads((root.parent / "docs/api/v0.3/manifest.json").read_text(encoding="utf-8"))
+    documented_names = {
+        "openapi_v0.3.json": "GoGlobe_openapi_v0.3.json",
+        "examples_v0.3.json": "GoGlobe_examples_v0.3.json",
+    }
     for name, expected in CONTRACT_HASHES.items():
         actual = hashlib.sha256((root / "app/contracts" / name).read_bytes()).hexdigest()
-        assert actual == expected == manifest["sha256"][name]
+        assert actual == expected == manifest["sha256"][documented_names[name]]
 
 
 def test_runtime_openapi_has_only_explicit_demo_scaffold_delta(tmp_path):
@@ -319,11 +324,24 @@ def test_error_envelope_is_stable_across_agent_adapter_resilience_and_database(t
             raise self.exc
 
     responses = []
+    snapshots = []
+
+    def terminal(test_client, response):
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            snapshot = test_client.get(response.headers["location"]).json()
+            if snapshot["state"] == "failed":
+                return snapshot
+            time.sleep(0.01)
+        raise AssertionError("background failure did not become terminal")
+
     for index, exc in enumerate((RuntimeError("agent"), ProviderError("PROVIDER_TRANSPORT_ERROR"))):
         with TestClient(create_app(str(tmp_path / f"layer-{index}.sqlite3"), agent=RaisingAgent(exc)),
                         headers=HEADERS, raise_server_exceptions=False) as test_client:
             login(test_client)
-            responses.append(search(test_client))
+            response = search(test_client)
+            responses.append(response)
+            snapshots.append(terminal(test_client, response))
 
     class ResilienceAgent:
         async def plan(self, context):
@@ -344,7 +362,9 @@ def test_error_envelope_is_stable_across_agent_adapter_resilience_and_database(t
     with TestClient(create_app(str(tmp_path / "resilience.sqlite3"), agent=ResilienceAgent(), tools=tools),
                     headers=HEADERS, raise_server_exceptions=False) as test_client:
         login(test_client)
-        responses.append(search(test_client))
+        response = search(test_client)
+        responses.append(response)
+        snapshots.append(terminal(test_client, response))
 
     path = str(tmp_path / "locked.sqlite3")
     with TestClient(create_app(path), headers=HEADERS, raise_server_exceptions=False) as test_client:
@@ -353,11 +373,15 @@ def test_error_envelope_is_stable_across_agent_adapter_resilience_and_database(t
             locker.execute("BEGIN IMMEDIATE")
             responses.append(test_client.get("/api/v1/trips"))
 
-    assert [response.status_code for response in responses] == [503, 503, 503, 503]
-    for response in responses:
-        validate("ErrorResponse", response.json())
-        assert set(response.json()) == {"error", "request_id"}
-        assert set(response.json()["error"]) == {"code", "message", "retryable", "details"}
+    assert [response.status_code for response in responses] == [202, 202, 202, 200]
+    for response, snapshot in zip(responses[:3], snapshots):
+        assert set(response.json()) == {
+            "search_id", "trip_id", "state", "revision", "expires_at",
+        }
+        assert set(snapshot["error"]) == {
+            "code", "message", "retryable", "details",
+        }
+    validate("TripList", responses[3].json())
 
 
 def test_v03_request_fixtures_need_no_new_required_fields(client):

@@ -124,10 +124,19 @@ def test_agent_failure_log_is_diagnostic_but_sanitized(tmp_path, caplog):
             json=deepcopy(examples()["plan_request"]["value"]),
             headers={"Idempotency-Key": str(uuid4())},
         )
-        assert response.status_code == 503
+        assert response.status_code == 202
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            snapshot = client.get(response.headers["location"]).json()
+            if snapshot["state"] == "failed":
+                break
+            time.sleep(0.01)
+        else:
+            raise AssertionError("agent failure was not persisted")
 
     log = "\n".join(record.getMessage() for record in caplog.records)
-    assert response.json()["request_id"] in log
+    assert response.json()["search_id"] in log
+    assert "run_id=r_" in log
     assert "RuntimeError" in log
     assert secret not in log
     assert cookie not in log
@@ -260,6 +269,23 @@ def test_env_example_matches_actual_main_defaults(tmp_path, monkeypatch):
     plan_request = inspect.getclosurevars(endpoint).nonlocals["plan_request"]
     assert inspect.getclosurevars(plan_request).nonlocals["timeout"] == 20
     assert ResiliencePolicy.from_env() == ResiliencePolicy()
+
+
+def test_root_env_example_starts_snapshot_backend(tmp_path):
+    values = {}
+    root_env = Path(__file__).parents[2] / ".env.example"
+    for line in root_env.read_text(encoding="utf-8").splitlines():
+        if line and not line.startswith("#"):
+            name, value = line.split("=", 1)
+            values[name] = value
+
+    backend_values = {name: value for name, value in values.items() if name in GOGLOBE_SETTINGS}
+    assert backend_values["GOGLOBE_PROVIDERS"] == "snapshot"
+    assert "https://goglobe-demo.vercel.app" in backend_values["GOGLOBE_CORS_ORIGINS"].split(",")
+    assert backend_values["GOGLOBE_DB_PATH"] == "data/goglobe.sqlite3"
+
+    result = run_import(tmp_path, **backend_values)
+    assert result.returncode == 0, result.stderr
 
 
 def test_legacy_valid_boundaries_in_clean_processes(tmp_path):

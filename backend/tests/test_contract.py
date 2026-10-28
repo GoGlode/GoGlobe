@@ -37,6 +37,19 @@ def test_criteria_rejects_dates_and_deadline():
 
 
 def test_contract_copy_matches_source():
-    manifest = json.loads((Path(__file__).parents[2] / "docs/api/v0.3/manifest.json").read_text(encoding="utf-8"))
-    for name in ("openapi_v0.3.json", "examples_v0.3.json"):
-        assert hashlib.sha256(Path("app/contracts", name).read_bytes()).hexdigest() == manifest["sha256"][name]
+    docs = Path(__file__).parents[2] / "docs/api/v0.3"
+    manifest = json.loads((docs / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["version"] == "0.3.1"
+    mapping = {
+        "openapi_v0.3.json": "GoGlobe_openapi_v0.3.json",
+        "examples_v0.3.json": "GoGlobe_examples_v0.3.json",
+        "openapi_v0.3.1.json": "GoGlobe_openapi_v0.3.1.json",
+        "examples_v0.3.1.json": "GoGlobe_examples_v0.3.1.json",
+    }
+    contracts = Path(__file__).parents[1] / "app/contracts"
+    for packaged, documented in mapping.items():
+        packaged_bytes = (contracts / packaged).read_bytes()
+        assert packaged_bytes == (docs / documented).read_bytes()
+        assert hashlib.sha256(packaged_bytes).hexdigest() == manifest["sha256"][documented]
+    pdf = docs / "GoGlobe_API_contracts_v0.3.pdf"
+    assert hashlib.sha256(pdf.read_bytes()).hexdigest() == manifest["sha256"][pdf.name]

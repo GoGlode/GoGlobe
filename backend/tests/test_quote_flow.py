@@ -1,4 +1,8 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+import sqlite3
+from threading import Event, Lock
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
@@ -115,6 +119,56 @@ def test_quote_idempotency_replays_without_new_revision(tmp_path):
         assert first.status_code == replay.status_code == 202
         assert replay.json() == first.json()
         assert client.get(trip_url).json()["revision"] == revision
+
+
+def test_concurrent_quote_replay_uses_one_provider_run(tmp_path):
+    class SlowUnavailableProvider:
+        data_mode = "live"
+
+        def __init__(self):
+            self.calls = 0
+            self.started = Event()
+            self.release = Event()
+            self.lock = Lock()
+
+        async def search(self, criteria):
+            with self.lock:
+                self.calls += 1
+                if self.calls == 2:
+                    self.started.set()
+            await asyncio.to_thread(self.release.wait)
+            return ToolResult(
+                "unavailable", [], [],
+                [{"code": "PROVIDER_TIMEOUT", "message": "timeout", "trip_id": None}],
+                "live",
+            )
+
+    provider = SlowUnavailableProvider()
+    path = str(tmp_path / "concurrent-quote.sqlite3")
+    tools = IntegrationTools(hotels=provider, flights=provider)
+    with TestClient(create_app(path, tools=tools), headers={"Origin": ORIGIN}) as client:
+        _, trip_url, trip = _login_and_plan(client)
+        key = str(uuid4())
+        body = _quote_body(trip["revision"])
+
+        def request():
+            return client.post(
+                trip_url + "/quote-searches", json=body,
+                headers={"Idempotency-Key": key},
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(request) for _ in range(2)]
+            assert provider.started.wait(timeout=5)
+            provider.release.set()
+            responses = [future.result(timeout=5) for future in futures]
+
+        assert all(response.status_code == 202 for response in responses)
+        assert responses[0].json() == responses[1].json()
+        assert provider.calls == 2  # one hotels call + one flights call
+        assert client.get(trip_url).json()["revision"] == trip["revision"] + 1
+        with sqlite3.connect(path) as db:
+            assert db.execute("SELECT count(*) FROM operation_claims").fetchone()[0] == 0
 
 
 class _UnavailableProvider:

@@ -1,10 +1,13 @@
+import asyncio
 from uuid import uuid4
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from app.bff import create_app
 from app.contracts import validate
+from app.planning import DemoPlanner
 
 
 ORIGIN = "http://localhost:8000"
@@ -45,6 +48,31 @@ def test_query_without_explicit_params_materializes_itinerary(client):
     assert trip["destination"]["name"] == "Рим"
     assert len(trip["itinerary"]["days"]) == 2
     assert trip["price_summary"]["status"] == "unknown"
+
+
+def test_explicit_dates_survive_background_completion(client):
+    response = client.post(
+        "/api/v1/searches",
+        json={
+            "query": "Хочу в Рим на 2 дня",
+            "params": {
+                "destination": "Рим",
+                "duration_days": 2,
+                "dates": {
+                    "start_date": "2026-11-10",
+                    "end_date": "2026-11-11",
+                },
+            },
+        },
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert response.status_code == 202
+    trip = client.get(f"/api/v1/trips/{response.json()['trip_id']}").json()
+    assert trip["schedule"]["start_date"] == "2026-11-10"
+    assert trip["schedule"]["end_date"] == "2026-11-11"
+    assert [day["date"] for day in trip["itinerary"]["days"]] == [
+        "2026-11-10", "2026-11-11",
+    ]
 
 
 def test_two_clarifications_keep_same_trip_and_complete(client):
@@ -88,23 +116,115 @@ def test_clarification_question_id_is_guarded(client):
     assert response.json()["error"]["code"] == "QUESTION_CONFLICT"
 
 
-def test_nonterminal_sse_snapshot_and_cancellation(client):
-    accepted = post_search(client, "Хочу путешествие")
-    location = accepted.headers["location"]
-    events = client.get(location + "/events")
-    assert events.status_code == 200
-    assert "event: snapshot" in events.text
-    assert "event: finished" not in events.text
+def test_nonterminal_sse_stays_open_until_cancellation(tmp_path):
+    async def scenario():
+        app = create_app(str(tmp_path / "sse-transition.sqlite3"))
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers={"Origin": ORIGIN},
+        ) as async_client:
+            assert (await async_client.post("/api/v1/session", json={})).status_code == 200
+            accepted = await async_client.post(
+                "/api/v1/searches",
+                json={"query": "Хочу путешествие"},
+                headers={"Idempotency-Key": str(uuid4())},
+            )
+            location = accepted.headers["location"]
+            snapshot = (await async_client.get(location)).json()
+            assert snapshot["state"] == "needs_clarification"
 
-    cancelled = client.put(location + "/cancellation", json={})
-    assert cancelled.status_code == 200
-    assert cancelled.json()["state"] == "cancelled"
-    assert cancelled.json()["components"]["itinerary"]["error"]["code"] == "SEARCH_CANCELLED"
-    repeated = client.put(location + "/cancellation", json={})
-    assert repeated.status_code == 200
-    assert repeated.json() == cancelled.json()
-    finished = client.get(location + "/events")
-    assert "event: finished" in finished.text
+            stream = asyncio.create_task(async_client.get(location + "/events"))
+            await asyncio.sleep(0.05)
+            cancelled = await async_client.put(location + "/cancellation", json={})
+            assert cancelled.status_code == 200
+            assert cancelled.json()["state"] == "cancelled"
+            assert cancelled.json()["components"]["itinerary"]["error"]["code"] == "SEARCH_CANCELLED"
+            events = await asyncio.wait_for(stream, timeout=3)
+            assert "event: snapshot" in events.text
+            assert "event: finished" in events.text
+            assert events.text.index("event: snapshot") < events.text.index("event: finished")
+            repeated = await async_client.put(location + "/cancellation", json={})
+            assert repeated.json() == cancelled.json()
+
+    asyncio.run(scenario())
+
+
+def test_logout_revokes_an_open_sse_stream(tmp_path):
+    async def scenario():
+        app = create_app(str(tmp_path / "sse-logout.sqlite3"))
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers={"Origin": ORIGIN},
+        ) as async_client:
+            await async_client.post("/api/v1/session", json={})
+            accepted = await async_client.post(
+                "/api/v1/searches", json={"query": "Хочу путешествие"},
+                headers={"Idempotency-Key": str(uuid4())},
+            )
+            location = accepted.headers["location"]
+            assert (await async_client.get(location)).json()["state"] == "needs_clarification"
+            stream = asyncio.create_task(async_client.get(location + "/events"))
+            await asyncio.sleep(0.05)
+            assert (await async_client.delete("/api/v1/session")).status_code == 204
+            events = await asyncio.wait_for(stream, timeout=3)
+            assert "event: snapshot" in events.text
+            assert "event: finished" not in events.text
+
+    asyncio.run(scenario())
+
+
+def test_sse_emits_update_when_run_revision_advances(tmp_path):
+    class SecondRunGate:
+        def __init__(self):
+            self.calls = 0
+            self.started = asyncio.Event()
+
+        async def plan(self, context):
+            self.calls += 1
+            if self.calls == 2:
+                self.started.set()
+                await asyncio.Event().wait()
+            return await DemoPlanner().plan(context)
+
+    async def scenario():
+        agent = SecondRunGate()
+        app = create_app(str(tmp_path / "sse-update.sqlite3"), agent=agent)
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+            headers={"Origin": ORIGIN},
+        ) as async_client:
+            await async_client.post("/api/v1/session", json={})
+            accepted = await async_client.post(
+                "/api/v1/searches", json={"query": "Хочу путешествие"},
+                headers={"Idempotency-Key": str(uuid4())},
+            )
+            location = accepted.headers["location"]
+            snapshot = (await async_client.get(location)).json()
+            stream = asyncio.create_task(async_client.get(location + "/events"))
+            await async_client.post(
+                location + "/clarifications",
+                json={
+                    "question_id": snapshot["clarification"]["question_id"],
+                    "expected_revision": snapshot["revision"],
+                    "answer": "Рим",
+                },
+                headers={"Idempotency-Key": str(uuid4())},
+            )
+            await asyncio.wait_for(agent.started.wait(), timeout=2)
+            await asyncio.sleep(0.3)
+            await async_client.put(location + "/cancellation", json={})
+            events = await asyncio.wait_for(stream, timeout=3)
+            assert "event: snapshot" in events.text
+            assert "event: update" in events.text
+            assert "event: finished" in events.text
+
+    asyncio.run(scenario())
 
 
 def test_clarification_completion_is_idempotent(client):

@@ -6,7 +6,12 @@ $null = Invoke-RestMethod "$BaseUrl/api/v1/session" -Method Post -Headers $smoke
 $smokeHeaders['Idempotency-Key'] = [guid]::NewGuid().ToString()
 $smokeBody = @{query='Rome for two days'; params=@{destination='Rome'; duration_days=2}} | ConvertTo-Json -Depth 5 -Compress
 $smokeAccepted = Invoke-RestMethod "$BaseUrl/api/v1/searches" -Method Post -Headers $smokeHeaders -ContentType 'application/json' -Body $smokeBody -WebSession $smokeSession
-$smokeSnapshot = Invoke-RestMethod "$BaseUrl/api/v1/searches/$($smokeAccepted.search_id)" -WebSession $smokeSession
+$smokeSnapshot = $null
+for ($attempt = 0; $attempt -lt 80; $attempt++) {
+    $smokeSnapshot = Invoke-RestMethod "$BaseUrl/api/v1/searches/$($smokeAccepted.search_id)" -WebSession $smokeSession
+    if ($smokeSnapshot.state -in @('completed', 'failed', 'cancelled')) { break }
+    Start-Sleep -Milliseconds 250
+}
 if ($smokeSnapshot.state -ne 'completed') { throw 'Demo search did not complete' }
 $smokeTripUrl = "$BaseUrl/api/v1/trips/$($smokeAccepted.trip_id)"
 $smokeSaved = Invoke-RestMethod "$smokeTripUrl/saved" -Method Put -Headers $smokeHeaders -ContentType 'application/json' -Body '{}' -WebSession $smokeSession

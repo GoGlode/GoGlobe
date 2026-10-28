@@ -2,6 +2,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import time
 from uuid import uuid4
 
 import pytest
@@ -24,6 +25,16 @@ def login(client):
 def search(client, key=None):
     return client.post("/api/v1/searches", headers={"Idempotency-Key": key or str(uuid4())},
                        json=examples()["plan_request"]["value"])
+
+
+def wait_terminal(client, response, timeout=5):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        snapshot = client.get(response.headers["location"]).json()
+        if snapshot["state"] in {"completed", "failed", "cancelled"}:
+            return snapshot
+        time.sleep(0.01)
+    raise AssertionError("search did not become terminal")
 
 
 class CountingAgent:
@@ -59,7 +70,7 @@ def test_independent_concurrent_searches(tmp_path):
         assert len({response.json()["trip_id"] for response in responses}) == 8
 
 
-def test_timeout_failure_then_retry_without_poisoning_key(tmp_path):
+def test_timeout_failure_is_persisted_and_idempotency_replays_acceptance(tmp_path):
     class Agent:
         fail = True
         async def plan(self, context):
@@ -71,12 +82,16 @@ def test_timeout_failure_then_retry_without_poisoning_key(tmp_path):
         login(client)
         key = str(uuid4())
         response = search(client, key)
-        assert response.status_code == 503
-        assert response.json()["error"]["code"] == "AGENT_TIMEOUT"
-        assert response.json()["error"]["retryable"] is True
-        assert client.get("/api/v1/trips").json()["items"] == []
+        assert response.status_code == 202
+        snapshot = wait_terminal(client, response)
+        assert snapshot["error"]["code"] == "SEARCH_TIMEOUT"
+        assert snapshot["error"]["retryable"] is True
         agent.fail = False
-        assert search(client, key).status_code == 202
+        replay = search(client, key)
+        assert replay.json() == response.json()
+        assert client.get(response.headers["location"]).json() == snapshot
+        fresh = search(client, str(uuid4()))
+        assert wait_terminal(client, fresh)["state"] == "completed"
 
 
 @pytest.mark.parametrize("fault", ["crash", "wrong_type", "wrong_days", "wrong_destination", "missing_source", "duplicate_item", "dated_days"])
@@ -102,9 +117,13 @@ def test_bad_agent_does_not_write_or_crash(tmp_path, fault):
     with TestClient(create_app(str(tmp_path / "bad.sqlite3"), agent=BadAgent()), headers=ORIGIN) as client:
         login(client)
         response = search(client)
-        assert response.status_code == (503 if fault == "crash" else 502)
-        assert "private-provider-secret" not in response.text
-        assert client.get("/api/v1/trips").json()["items"] == []
+        assert response.status_code == 202
+        snapshot = wait_terminal(client, response)
+        assert snapshot["state"] == "failed"
+        assert snapshot["error"]["code"] == (
+            "AGENT_UNAVAILABLE" if fault == "crash" else "AGENT_INVALID_RESPONSE"
+        )
+        assert "private-provider-secret" not in str(snapshot)
         assert client.get("/health").status_code == 200
 
 
@@ -203,8 +222,12 @@ def test_late_agent_result_is_not_committed(tmp_path):
             return await DemoPlanner().plan(context)
     with TestClient(create_app(str(tmp_path / "late.sqlite3"), agent=LateAgent(), agent_timeout=0.01), headers=ORIGIN) as client:
         login(client)
-        assert search(client).status_code == 503
-        assert client.get("/api/v1/trips").json()["items"] == []
+        response = search(client)
+        assert response.status_code == 202
+        snapshot = wait_terminal(client, response)
+        assert snapshot["state"] == "failed"
+        time.sleep(0.25)
+        assert client.get(response.headers["location"]).json() == snapshot
 
 
 def test_unauthenticated_request_never_calls_agent(tmp_path):
@@ -231,10 +254,9 @@ def test_storage_lock_is_temporary_and_does_not_crash(tmp_path):
         with sqlite3.connect(path) as locker:
             locker.execute("BEGIN IMMEDIATE")
             response = client.get("/api/v1/trips")
-            assert response.status_code == 503
-            assert response.json()["error"]["code"] == "STORAGE_BUSY"
-            assert response.json()["error"]["retryable"] is True
-            assert client.get("/health").status_code == 503
+            assert response.status_code == 200
+            assert response.json()["items"] == []
+            assert client.get("/health").status_code == 200
         assert client.get("/api/v1/trips").status_code == 200
         assert client.get("/health").status_code == 200
 

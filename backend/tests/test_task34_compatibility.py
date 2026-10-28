@@ -193,6 +193,16 @@ def _login(client):
     assert client.post("/api/v1/session", json={}).status_code == 200
 
 
+def _wait_terminal(client, response, timeout=5):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        snapshot = client.get(response.headers["location"]).json()
+        if snapshot["state"] in {"completed", "failed", "cancelled"}:
+            return snapshot
+        time.sleep(0.01)
+    raise AssertionError("search did not become terminal")
+
+
 def test_live_pipeline_normalizes_persists_retries_and_uses_cache(tmp_path):
     with local_gateway() as (gateway, port):
         gateway.configure("hotels", 503, 200)
@@ -203,7 +213,7 @@ def test_live_pipeline_normalizes_persists_retries_and_uses_cache(tmp_path):
             _login(client)
             first = _search(client)
             assert first.status_code == 202, first.text
-            snapshot = client.get(first.headers["location"]).json()
+            snapshot = _wait_terminal(client, first)
             trip = client.get("/api/v1/trips/" + first.json()["trip_id"]).json()
             validate("Snapshot", snapshot)
             validate("Trip", trip)
@@ -220,10 +230,11 @@ def test_live_pipeline_normalizes_persists_retries_and_uses_cache(tmp_path):
 
             second = _search(client)
             assert second.status_code == 202, second.text
+            second_snapshot = _wait_terminal(client, second)
             assert gateway.calls == {"hotels": 2, "flights": 1, "destinations": 1}
             assert all(any(warning["code"] == "CACHE_HIT" for warning in result.warnings)
                        for result in agent.results[1])
-            assert client.get(second.headers["location"]).json()["data_mode"] == "live"
+            assert second_snapshot["data_mode"] == "live"
 
 
 def test_permanent_http_error_is_not_retried_or_saved(tmp_path):
@@ -235,12 +246,14 @@ def test_permanent_http_error_is_not_retried_or_saved(tmp_path):
                         headers=ORIGIN) as client:
             _login(client)
             response = _search(client)
-            assert response.status_code == 503
+            assert response.status_code == 202
+            snapshot = _wait_terminal(client, response)
+            assert snapshot["state"] == "failed"
+            assert snapshot["error"]["code"] == "AGENT_UNAVAILABLE"
             assert gateway.calls["hotels"] == 1
             failed_hotel = agent.results[0][0]
             assert failed_hotel.data_mode == "live"
             assert {warning["code"] for warning in failed_hotel.warnings} == {"PROVIDER_AUTH_ERROR"}
-            assert client.get("/api/v1/trips").json()["items"] == []
 
 
 def test_explicit_demo_fallback_reaches_snapshot_and_trip_without_leaking(tmp_path):
@@ -256,7 +269,7 @@ def test_explicit_demo_fallback_reaches_snapshot_and_trip_without_leaking(tmp_pa
             _login(client)
             fallback = _search(client)
             assert fallback.status_code == 202, fallback.text
-            fallback_snapshot = client.get(fallback.headers["location"]).json()
+            fallback_snapshot = _wait_terminal(client, fallback)
             fallback_trip = client.get("/api/v1/trips/" + fallback.json()["trip_id"]).json()
             assert fallback_snapshot["data_mode"] == fallback_trip["data_mode"] == "demo"
             assert "DEMO_FALLBACK" in {warning["code"] for warning in fallback_snapshot["warnings"]}
@@ -266,7 +279,7 @@ def test_explicit_demo_fallback_reaches_snapshot_and_trip_without_leaking(tmp_pa
 
             live = _search(client)
             assert live.status_code == 202, live.text
-            live_snapshot = client.get(live.headers["location"]).json()
+            live_snapshot = _wait_terminal(client, live)
             live_trip = client.get("/api/v1/trips/" + live.json()["trip_id"]).json()
             assert live_snapshot["data_mode"] == live_trip["data_mode"] == "live"
             assert not {"DEMO_FALLBACK", "DEMO_DATA"} & {
@@ -290,8 +303,8 @@ def test_total_deadline_cancels_http_pipeline_without_partial_write(tmp_path):
             started = time.monotonic()
             response = _search(client)
             elapsed = time.monotonic() - started
-            assert response.status_code == 503
-            assert response.json()["error"]["code"] == "AGENT_TIMEOUT"
+            assert response.status_code == 202
             assert elapsed < 0.8
+            snapshot = _wait_terminal(client, response)
+            assert snapshot["error"]["code"] == "SEARCH_TIMEOUT"
             assert gateway.calls["hotels"] == 1
-            assert client.get("/api/v1/trips").json()["items"] == []
