@@ -1,0 +1,114 @@
+/* Единый стиль GoGlobe — по образцу главной: мягкое матовое стекло, тонкая светлая кромка (.5px), плоский синий #0a84ff,
+   без градиентов на блоках. Подключается после liquid.css и перекрывает разнобой отдельных экранов. */
+:root {
+  /* Эталон — стекло нижней навигации: заливка .66, blur 18 + saturate 160%, кромка 1px белая. Теней нет */
+  --lg-white-bg: var(--c-glass);
+  --lg-surface-bg: var(--c-glass);
+  --lg-edge: inset 0 0 0 1px rgba(255, 255, 255, .85);
+  --lg-surface-edge: inset 0 0 0 1px rgba(255, 255, 255, .85);
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .45);
+  --shadow-md: none; --shadow-sm: none; --shadow-glow: none;
+}
+.card, .prof-card, .fcard, .fav, .hcard2, .tl__card, .mtcard, .cal.card, .stop, .pin__lbl,
+.btn--ghost, button.chip:not(.chip--active), .circle-btn, .tcard__heart, .hcard__heart, .res__round, .ttab:not(.is-on), .seg button:not(.on),
+.fl-modes button:not(.on), .home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .hist__filter-btn,
+.fl-field, .prof-field input, .home__panel-form input, .st__ans {
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+
+/* Мелкие стеклянные элементы — та же кромка, что у больших */
+button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
+.home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .circle-btn, .hist__filter-btn { box-shadow: var(--lg-edge); }
+
+/* Заголовок вкладок: крупно слева (как iOS large title) */
+.page-header--large { justify-content: space-between; padding-top: 18px; }
+.page-header--large .page-header__title { flex: none; text-align: left; font-size: 32px; font-weight: 800; letter-spacing: -.03em; }
+.hist > .page-header, .prof > .page-header { margin: 0 calc(var(--s-4) * -1); }
+.hist__sub { margin-top: -4px; }
+
+/* Поля ввода, степперы и круглые кнопки на фото — стекло вместо белых плашек с рамкой */
+.fl-field, .prof-field input, .home__panel-form input, .st__ans {
+  background: var(--lg-white-bg); border: 0; box-shadow: var(--lg-edge);
+}
+/* Поле со стеклом создаёт свой слой — список городов внутри него перекрывался следующими полями и кнопкой. Открытое поле поднимаем выше соседей */
+.fl-field:focus-within, .fl-field:has(.city-menu) { z-index: 40; }
+.city-menu { z-index: 50; }
+.fl-field:focus-within, .prof-field input:focus, .home__panel-form input:focus, .st__ans:focus {
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, .22), var(--lg-edge); }
+.res__round, .tcard__heart, .hcard__heart, .plane { background: rgba(255, 255, 255, .78); box-shadow: var(--lg-edge); }
+
+/* Белые «листы» поверх фото и карточки с фото */
+.tcard__body, .hcard__body, .tsheet, .hmenu__list { background: rgba(255, 255, 255, .94); }
+.tcard, .hcard { box-shadow: var(--lg-surface-edge); }
+.hmenu__list { border: 0; box-shadow: var(--lg-surface-edge); }
+
+/* Плашки «демо» и предупреждения — без жёстких рамок */
+.fl-demo, .hist__demo, .prog__demo, .warn { border: 0; box-shadow: inset 0 0 0 .5px rgba(245, 165, 36, .5); }
+
+:root[data-theme="dark"] {
+  --lg-white-bg: rgba(255, 255, 255, .08);
+  --lg-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-surface-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .4);
+}
+:root[data-theme="dark"] .res__round, :root[data-theme="dark"] .tcard__heart, :root[data-theme="dark"] .hcard__heart, :root[data-theme="dark"] .plane { background: rgba(60, 82, 128, .8); }
+:root[data-theme="dark"] .tcard__body, :root[data-theme="dark"] .hcard__body, :root[data-theme="dark"] .tsheet, :root[data-theme="dark"] .hmenu__list { background: #121f38; }
+
+/* Горизонтальные ряды (чипы, вкладки): привязка к началу с отступом — первый элемент не прилипает к краю экрана */
+.scroll-x { scroll-padding-inline: var(--s-4); }
+
+/* Результаты поиска: вместо нижнего меню — пульт выбора (✕ · точки · ♥), закреплённый внизу экрана */
+.app:has(.res__controls) .glassnav, .app:has(.prog) .glassnav { display: none; } /* и на экране «Подбираю путешествие» меню не нужно */
+/* Пульт неподвижен: приколот к низу экрана и не прокручивается вместе с карточками */
+/* Вынесен в корень приложения (портал) — не зависит от прокрутки и анимаций экрана, стоит строго на месте */
+.app > .res__controls { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); transform: none; animation: none; transition: none; z-index: 12; padding: 0; pointer-events: none; }
+.res__controls > * { pointer-events: auto; }
+.res { padding-bottom: 104px; }
+.res > .page-header { margin: 0 calc(var(--s-4) * -1); }
+
+/* Выпадающие списки и меню — сплошной белый фон, без просвечивания */
+.city-menu, .hmenu__list { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="dark"] .city-menu, :root[data-theme="dark"] .hmenu__list { background: #15223b; }
+
+/* Шапка: вместо резкой границы — плавное размытие контента под ней (размытие и подложка гаснут маской) */
+.page-header { background: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; isolation: isolate; }
+.page-header::before { content: ""; position: absolute; inset: 0 0 -24px; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--c-bg, #eef4ff) 78%, transparent), color-mix(in srgb, var(--c-bg, #eef4ff) 0%, transparent));
+  -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%); }
+.map .page-header::before { display: none; }
+.page-header__title { display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
+.page-header--large .page-header__title { justify-content: flex-start; }
+.page-header__ic { color: var(--c-primary); flex: none; }
+
+/* ===== Плавность: переходы между экранами и появление контента ===== */
+.app__scroll { scroll-behavior: smooth; overscroll-behavior-y: contain; }
+/* Каждый новый экран — новый корневой элемент: анимация проигрывается при монтировании (без fill-forwards, чтобы не ломать sticky-шапки) */
+.app__scroll > * { animation: route-in .34s cubic-bezier(.2, .8, .2, 1) backwards; }
+.app[data-dir="forward"] .app__scroll > * { --rx: 26px; --ry: 0px; }
+.app[data-dir="back"] .app__scroll > * { --rx: -26px; --ry: 0px; }
+.app[data-dir="tab"] .app__scroll > * { --rx: 0px; --ry: 8px; animation-duration: .28s; }
+@keyframes route-in { from { opacity: 0; transform: translate(var(--rx, 0), var(--ry, 8px)); } }
+/* Списки: карточки появляются каскадом */
+:is(.fav-list, .mytrips__sec, .atrip) > * { animation: fade-up .38s cubic-bezier(.2, .8, .2, 1) backwards; }
+:is(.fav-list, .mytrips__sec, .atrip) > *:nth-child(2) { animation-delay: .04s; }
+:is(.fav-list, .mytrips__sec, .atrip) > *:nth-child(3) { animation-delay: .08s; }
+:is(.fav-list, .mytrips__sec, .atrip) > *:nth-child(4) { animation-delay: .12s; }
+:is(.fav-list, .mytrips__sec, .atrip) > *:nth-child(n+5) { animation-delay: .16s; }
+.hcard, .mtcard, .fav, .offer { animation: fade-up .4s cubic-bezier(.2, .8, .2, 1) backwards; }
+/* Нажатия и смена состояний мягче */
+:is(.btn, .chip, .home__opt, .home__cta, .ttab, .circle-btn, .mtcard, .fav) { transition: background-color .22s ease, color .22s ease, box-shadow .22s ease, transform .18s ease, opacity .22s ease, filter .22s ease; }
+/* Смена темы без «щелчка» */
+:root, .app, .card, .tsheet, .hcard, .quiz__sheet { transition: background-color .35s ease, color .35s ease, border-color .35s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .app__scroll { scroll-behavior: auto; }
+  .app__scroll > *, :is(.fav-list, .mytrips__sec, .atrip) > *, .hcard, .mtcard, .fav, .offer { animation: none !important; }
+}
+
+/* Перелёты: заголовка нет — размытой подложки под шапкой тоже */
+.fl-screen .page-header::before { display: none; }
+/* Перелёты: подсказка стоит в шапке по центру между «назад» и «Фильтры» */
+.fl-screen .page-header__title { font-size: 14px; font-weight: 500; line-height: 1.25; color: var(--c-muted); text-wrap: balance; }
+
+/* Тёмная тема: выпадающие списки городов и меню — сплошные, не стеклянные */
+:root[data-theme="dark"] .city-menu, :root[data-theme="dark"] .hmenu__list { background: #15223b !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: 0 16px 36px -10px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .1); }

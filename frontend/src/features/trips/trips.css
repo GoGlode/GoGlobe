@@ -1,0 +1,57 @@
+/* Шапка закреплена (ui/PageHeader) — на этом экране даём ей фон, чтобы календарь не просвечивал */
+.mytrips-screen .page-header { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+.nowrap { white-space: nowrap; }
+.mytrips { display: grid; gap: 16px; padding-bottom: 8px; }
+
+/* Календарь */
+.cal.card { padding: 14px 10px 10px; border-radius: var(--r-lg); background: rgba(255, 255, 255, .9); }
+.cal__head { display: flex; align-items: center; justify-content: space-between; padding: 0 6px 8px; }
+.cal__head h2 { font-size: 20px; font-weight: 700; }
+.cal__nav { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: #e8f2ff; color: var(--c-primary); }
+.cal__nav:hover { background: #d9eaff; }
+.cal__nav:active { transform: scale(.94); }
+.cal__grid { display: grid; gap: 2px; }
+.cal__row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal__wd { text-align: center; font-size: 13px; color: var(--c-muted); padding: 4px 0 6px; }
+.cal__day { position: relative; height: 44px; display: grid; place-items: center; }
+.cal__day button { position: relative; z-index: 1; width: 40px; height: 40px; border-radius: 50%; font-size: 15.5px; font-weight: 500;
+  color: var(--c-navy); transition: background .15s, box-shadow .15s; }
+.cal__day button:hover { background: rgba(7, 135, 249, .1); }
+.cal__day button:active { transform: scale(.94); }
+.cal__day button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(7, 135, 249, .4); }
+.cal__day.is-out:not(.trip-start):not(.trip-end) button { color: #7b8aa5; }
+
+/* Полоса диапазона поездки: на всю ячейку, скругления на концах и краях недели */
+.cal__day.in-trip::before { content: ""; position: absolute; inset: 3px 0; background: #dcecff; }
+.cal__day.in-trip button { color: var(--c-primary-dark); font-weight: 600; }
+.cal__day.trip-start::before, .cal__row > .cal__day.in-trip:first-child::before { left: 2px; border-radius: 20px 0 0 20px; }
+.cal__day.trip-end::before, .cal__row > .cal__day.in-trip:last-child::before { right: 2px; border-radius: 0 20px 20px 0; }
+.cal__day.trip-start.trip-end::before { border-radius: 20px; }
+.cal__day.trip-start button, .cal__day.trip-end button { background: #1f86f7; color: #fff; box-shadow: none; }
+
+.cal__day.is-today button::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px;
+  border-radius: 50%; background: currentColor; }
+.cal__day.is-selected button { box-shadow: 0 0 0 2px var(--c-navy); }
+.cal__day.is-selected.trip-start button, .cal__day.is-selected.trip-end button { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c-navy); }
+
+.mytrips__filter { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 600; }
+.mytrips__filter .chip { background: var(--c-glass-strong); box-shadow: var(--shadow-sm); }
+
+/* Списки поездок */
+.mytrips__sec { display: grid; gap: 10px; }
+.mtcard { display: flex; align-items: center; gap: 14px; padding: 8px 12px 8px 8px; border-radius: 22px; background: rgba(255, 255, 255, .88);
+  border: 1px solid var(--c-border); box-shadow: var(--shadow-md); transition: transform .15s; }
+.mtcard:active { transform: scale(.98); }
+.mtcard:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(7, 135, 249, .4), var(--shadow-md); }
+.mtcard__img { width: 116px; height: 96px; border-radius: 18px; overflow: hidden; flex: none; }
+.mtcard__txt { flex: 1; min-width: 0; display: grid; gap: 5px; justify-items: start; }
+.mtcard__txt b { font-size: 16px; line-height: 1.25; }
+.mtcard__txt small { font-size: 13.5px; }
+.mtcard__status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 500; }
+.mtcard__status.is-prep { background: #e3f0ff; color: var(--c-primary-dark); }
+.mtcard__status.is-confirmed { background: var(--c-success-bg); color: #0d7a3d; }
+.mtcard__status.is-confirmed svg { background: var(--c-success); color: #fff; border-radius: 50%; padding: 2px; }
+.mtcard__go { color: var(--c-primary); flex: none; }
+
+.mytrips__empty { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 20px; }
+.mytrips__demo { justify-self: center; font-size: 12px; color: var(--c-muted); }

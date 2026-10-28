@@ -1,0 +1,92 @@
+/* Тёмная тема. Токены переопределяются целиком, а жёстко заданные светлые цвета экранов — точечно ниже.
+   Подключается последней (main.tsx), поэтому перекрывает светлые правила. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --c-navy: #e8eefc; --c-text: #e8eefc; --c-muted: #93a4c4;
+  --c-primary-dark: #62b6ff;
+  --c-bg: #0a1222; --c-bg-2: #0e182c; --c-surface: #15223b;
+  --c-glass: rgba(255, 255, 255, .06); --c-glass-strong: rgba(255, 255, 255, .08);
+  --c-border: rgba(255, 255, 255, .09); --c-line: rgba(255, 255, 255, .1); --c-chip: rgba(255, 255, 255, .08);
+  --c-success-bg: rgba(18, 161, 80, .18);
+  --grad-page: #0a1222;
+  --shadow-sm: none; --shadow-md: none;
+  --c-link: #3aa3ff; --c-danger-text: #ff8a8e; --d-surface: #15223b; --d-tint: rgba(7, 135, 249, .16); --d-tint-2: rgba(255, 255, 255, .07);
+
+  /* Стекло */
+  --lg-white-bg: rgba(255, 255, 255, .08);
+  --lg-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-edge-sm: inset 0 0 0 1px rgba(255, 255, 255, .09);
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .4);
+  --lg-surface-bg: rgba(255, 255, 255, .055);
+  --lg-surface-edge: inset 0 0 0 1px rgba(255, 255, 255, .09);
+}
+:root[data-theme="dark"] body { background: #060b16; }
+:root[data-theme="dark"] .app { box-shadow: 0 0 60px rgba(0, 0, 0, .5); }
+:root[data-theme="dark"] input::placeholder, :root[data-theme="dark"] textarea::placeholder { color: #6c7d9e; }
+
+/* Мелкие стеклянные элементы: компактная кромка */
+:root[data-theme="dark"] :is(button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on), .home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .circle-btn, .hist__filter-btn) { box-shadow: var(--lg-edge-sm); }
+:root[data-theme="dark"] :is(.chip--active, .ttab.is-on, .seg button.on, .fl-modes button.on) { box-shadow: var(--lg-edge-blue); }
+:root[data-theme="dark"] .seg { background: rgba(255, 255, 255, .06); }
+:root[data-theme="dark"] .prof-field input { background: rgba(255, 255, 255, .06); }
+:root[data-theme="dark"] :is(.prof-stats > div, .prof-prefs__ic, .prof-chip) { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 1px 0 rgba(255, 255, 255, .1); }
+
+/* Шапки, ряд дней, меню городов, нижняя навигация */
+:root[data-theme="dark"] .days { background: rgba(10, 18, 34, .92); }
+:root[data-theme="dark"] .city-menu { background: rgba(20, 32, 58, .97); box-shadow: 0 16px 36px -10px rgba(0, 0, 0, .7), 0 2px 6px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .1); }
+:root[data-theme="dark"] .city-menu__item small { background: var(--d-tint); }
+:root[data-theme="dark"] .city-menu__item.is-cursor { background: rgba(255, 255, 255, .08); }
+:root[data-theme="dark"] .glassnav .glassnav__lens { background: rgba(255, 255, 255, .1);
+  -webkit-backdrop-filter: blur(6px) brightness(1.08); backdrop-filter: blur(6px) brightness(1.08);
+  box-shadow: 0 4px 14px -6px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .22); }
+:root[data-theme="dark"] .glassnav .glassnav__lens:is(.is-dragging, .is-moving) { background: rgba(255, 255, 255, .06); -webkit-backdrop-filter: none; backdrop-filter: none;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 255, 255, .1), inset 0 1px 0 rgba(255, 255, 255, .18); }
+:root[data-theme="dark"] .glassnav__lens::after { background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, .07) 50%, transparent 80%); background-size: 250% 100%; }
+:root[data-theme="dark"] .phone__home span { background: #e8eefc; }
+
+/* Белые поверхности → тёмные */
+:root[data-theme="dark"] :is(.tcard__body, .tsheet, .hcard, .hcard__body, .hmenu__list, .tcard, .plane) { background: var(--d-surface); }
+:root[data-theme="dark"] :is(.tcard__heart, .hcard__heart, .res__round, .home__stepper button, .fl-stepper button, .fl-swap, .home__panel-form input, .home__chips .chip:hover, .home__chips .chip[aria-expanded="true"]) { background: #1d2d4c; }
+:root[data-theme="dark"] .home__panel-form input { border-color: var(--c-line); }
+:root[data-theme="dark"] .avatar { box-shadow: 0 0 0 3px var(--d-surface), var(--shadow-md); }
+:root[data-theme="dark"] .pin__img { border-color: var(--d-surface); }
+:root[data-theme="dark"] .cal__day.is-selected.trip-start button, :root[data-theme="dark"] .cal__day.is-selected.trip-end button { box-shadow: 0 0 0 2px var(--d-surface), 0 0 0 4px #e8eefc; }
+:root[data-theme="dark"] .hist__demo, :root[data-theme="dark"] .hmenu__list { border-color: var(--c-line); }
+
+/* Светло-голубые «таблетки» и подложки → полупрозрачный синий */
+:root[data-theme="dark"] :is(.chip--tag, .home__spark, .res__spark, .prof-chip, .prof-prefs b, .prof-prefs__ic, .prof-stats > div, .prof-edit, .tcard__why, .tinc > div, .treasons > div, .hcard__am span,
+  .fcard__amen > span, .fcard__details, .hcard2__status, .hcard2__actions .btn--ghost, .mtcard__status.is-prep, .cal__nav, .prog__dot, .is-now .prog__dot) { background: var(--d-tint); }
+:root[data-theme="dark"] :is(.hcard2__status.is-none, .prog__bar, .home__example, .cal__day.in-trip::before) { background: var(--d-tint-2); }
+:root[data-theme="dark"] .cal__day.in-trip::before { background: rgba(7, 135, 249, .22); }
+:root[data-theme="dark"] .prof-edit:hover, :root[data-theme="dark"] .fl-swap:hover, :root[data-theme="dark"] .cal__nav:hover { background: rgba(7, 135, 249, .26); }
+:root[data-theme="dark"] .tl__dot { box-shadow: 0 0 0 5px rgba(7, 135, 249, .25); }
+:root[data-theme="dark"] .rating__stars .off { color: #3a4a6b; }
+:root[data-theme="dark"] .fl-skel { background: linear-gradient(90deg, #15223b 25%, #1d2d4c 50%, #15223b 75%); background-size: 200% 100%; }
+
+/* Жёлтые «демо»-метки, предупреждения и ошибки */
+:root[data-theme="dark"] :is(.home__demo, .fl-demo, .prog__demo, .hist__demo, .hcard2__tag) { background: rgba(245, 165, 36, .14); color: #f5c26b; border-color: rgba(245, 165, 36, .32); }
+:root[data-theme="dark"] .hcard__note { background: rgba(245, 165, 36, .12); color: #f5c26b; }
+:root[data-theme="dark"] :is(.prof__alert, .fl-errors) { background: rgba(229, 72, 77, .16); color: #ff9a9d; }
+
+/* Поля перелётов, сегменты, приглушённый текст */
+:root[data-theme="dark"] .fl-field { background: var(--lg-surface-bg); border-color: var(--c-line); box-shadow: var(--shadow-sm); }
+:root[data-theme="dark"] .fl-field:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(7, 135, 249, .3); }
+:root[data-theme="dark"] .fl-modes { background: rgba(255, 255, 255, .06); }
+:root[data-theme="dark"] .fl-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+:root[data-theme="dark"] :is(.tl__items, .tcard__why p, .stop small) { color: #b3c1dc; }
+:root[data-theme="dark"] .cal__day.is-out:not(.trip-start):not(.trip-end) button, :root[data-theme="dark"] .cal__day.muted button { color: #7384a6; }
+:root[data-theme="dark"] .cal__day.trip-start button, :root[data-theme="dark"] .cal__day.trip-end button { color: #fff; }
+
+:root[data-theme="dark"] .photo--empty { background: linear-gradient(135deg, #1a2a4a, #223559 55%, #182642); }
+
+/* Зелёные статусы и логотип */
+:root[data-theme="dark"] .mtcard__status.is-confirmed { background: rgba(18, 161, 80, .2); color: #62d99a; }
+:root[data-theme="dark"] .hcard2__status.is-saved { background: rgba(18, 161, 80, .2); color: #62d99a; }
+
+/* Смена темы без View Transitions: плавное перекрашивание */
+:root.theme-fade *, :root.theme-fade *::before, :root.theme-fade *::after { transition: background-color .6s ease, color .6s ease, border-color .6s ease, box-shadow .6s ease, fill .6s ease, stroke .6s ease !important; }
+/* Со View Transitions: старый и новый вид без собственной анимации, «раскрытие» задаёт ThemeContext */
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+:root[data-theme="dark"] .map .page-header { background: none; }
