@@ -6,8 +6,9 @@ Date: 2026-10-28 (Europe/Moscow)
 
 - Added the v0.3.1 `POST /api/v1/intent/preview` contract, fixtures and
   deterministic fallback implementation. Preview is session/Origin protected,
-  bounded to 64 KiB and two concurrent calls per owner, returns at most three
-  validated questions and never creates a Search or Trip.
+  bounded to 64 KiB, two concurrent calls and 20 calls/minute per owner,
+  returns at most three validated questions and never creates a Search or Trip.
+  Rate-limit responses include `Retry-After` and are described in OpenAPI.
 - Extended the fallback planner to parse supported destinations and trip
   duration from free text. Missing core fields create a persisted
   `needs_clarification` Snapshot instead of a terminal validation error.
@@ -27,7 +28,7 @@ Date: 2026-10-28 (Europe/Moscow)
 ## Verification evidence
 
 - Final full pytest regression from the monorepo `backend/` directory:
-  `446 passed, 1 warning in 82.89s`.
+  `447 passed, 1 warning in 83.67s`.
 - Focused critical-path regression: `17 passed`.
 - Ruff: clean.
 - `python -m compileall -q app`: clean.

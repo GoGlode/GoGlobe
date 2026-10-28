@@ -7,8 +7,11 @@ import os
 import re
 import secrets
 import sqlite3
+from collections import deque
 from copy import deepcopy
 from datetime import date, datetime, timedelta, timezone
+from math import ceil
+from time import monotonic
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -35,6 +38,9 @@ IMPLEMENTED = {
     "put_searches_search_id_cancellation",
 }
 
+PREVIEW_RATE_PER_MINUTE = 20
+PREVIEW_OWNER_BUCKETS = 4096
+
 
 def now() -> datetime:
     return datetime.now(timezone.utc)
@@ -49,10 +55,11 @@ def digest(value: str) -> str:
 
 
 class ApiError(Exception):
-    def __init__(self, status: int, code: str, message: str, details=None):
+    def __init__(self, status: int, code: str, message: str, details=None, headers=None):
         self.status, self.code, self.message = status, code, message
         self.retryable = status in {429, 503}
         self.details = list(details or [])
+        self.headers = dict(headers or {})
 
 
 def trim(value):
@@ -105,11 +112,13 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
     planning_slots = asyncio.Semaphore(16)
     planning_locks = {}
     preview_slots = {}
+    preview_windows: dict[str, deque[float]] = {}
+    preview_rate_lock = asyncio.Lock()
     app = FastAPI(title="GoGlobe API", version="0.3.1", docs_url="/docs" if enable_docs else None, redoc_url=None)
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True,
                        allow_methods=["GET", "POST", "PUT", "DELETE"],
                        allow_headers=["Content-Type", "Idempotency-Key", "Last-Event-ID"],
-                       expose_headers=["Location", "X-Request-ID"])
+                       expose_headers=["Location", "X-Request-ID", "Retry-After"])
 
     @app.middleware("http")
     async def response_headers(request: Request, call_next):
@@ -124,7 +133,7 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         body = {"error": {"code": exc.code, "message": exc.message, "retryable": exc.retryable, "details": exc.details},
                 "request_id": request.state.request_id}
         validate("ErrorResponse", body)
-        return JSONResponse(body, status_code=exc.status)
+        return JSONResponse(body, status_code=exc.status, headers=exc.headers)
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException):
@@ -782,6 +791,29 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 raise ValueError("Invalid query")
         except (ValidationError, ValueError, TypeError):
             raise ApiError(422, "VALIDATION_ERROR", "Параметры не соответствуют контракту v0.3.1")
+        async with preview_rate_lock:
+            current = monotonic()
+            cutoff = current - 60
+            window = preview_windows.get(owner)
+            if window is None:
+                if len(preview_windows) >= PREVIEW_OWNER_BUCKETS:
+                    oldest_owner = min(
+                        preview_windows,
+                        key=lambda candidate: preview_windows[candidate][-1],
+                    )
+                    del preview_windows[oldest_owner]
+                    preview_slots.pop(oldest_owner, None)
+                window = preview_windows[owner] = deque()
+            while window and window[0] <= cutoff:
+                window.popleft()
+            if len(window) >= PREVIEW_RATE_PER_MINUTE:
+                retry_after = max(1, ceil(window[0] + 60 - current))
+                raise ApiError(
+                    429, "PREVIEW_RATE_LIMITED",
+                    "Слишком много запросов preview; повторите позже.",
+                    headers={"Retry-After": str(retry_after)},
+                )
+            window.append(current)
         slot = preview_slots.setdefault(owner, asyncio.Semaphore(2))
         async with slot:
             result = preview_intent(body["query"], params)
@@ -850,7 +882,10 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 "content": {"application/json": {"schema": {"$ref": "#/components/schemas/IntentPreviewResponse"}}}},
                 "400": {"description": "Invalid JSON"}, "403": {"description": "Session or Origin required"},
                 "413": {"description": "Request too large"}, "415": {"description": "JSON required"},
-                "422": {"description": "Validation error"}},
+                "422": {"description": "Validation error"},
+                "429": {"description": "Preview rate limit exceeded",
+                    "headers": {"Retry-After": {"schema": {"type": "integer", "minimum": 1, "maximum": 60}}},
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}},
             "x-implementation-status": "implemented",
         }}
         for methods in schema["paths"].values():

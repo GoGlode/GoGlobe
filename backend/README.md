@@ -7,6 +7,10 @@
 явные заглушки `501 NOT_IMPLEMENTED`; актуальная матрица находится в
 `../docs/integration/API_STATUS.md`.
 
+Intent Preview допускает не более двух одновременно выполняемых запросов и
+20 запросов в минуту на owner. При превышении возвращается `429
+PREVIEW_RATE_LIMITED` с `Retry-After`.
+
 ## Запуск в PowerShell
 
 Сначала перейдите в папку проекта:

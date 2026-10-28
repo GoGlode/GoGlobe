@@ -55,6 +55,16 @@ def test_preview_requires_session_origin_and_json(tmp_path):
                            headers={"Origin": ORIGIN, "Content-Type": "text/plain"}).status_code == 415
 
 
+def test_preview_rate_limit_is_bounded_and_retryable(client):
+    for _ in range(20):
+        assert client.post("/api/v1/intent/preview", json={"query": "Рим"}).status_code == 200
+    response = client.post("/api/v1/intent/preview", json={"query": "Рим"})
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "PREVIEW_RATE_LIMITED"
+    assert response.json()["error"]["retryable"] is True
+    assert 1 <= int(response.headers["Retry-After"]) <= 60
+
+
 def test_runtime_openapi_describes_preview(client):
     schema = client.get("/openapi.json").json()
     assert client.app.version == "0.3.1"
