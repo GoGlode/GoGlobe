@@ -6965,7 +6965,7 @@
     "/favorites/{trip_id}": {
       "put": {
         "operationId": "put_favorites_trip_id",
-        "summary": "[ЗАГЛУШКА] PUT /favorites/{trip_id}",
+        "summary": "PUT /favorites/{trip_id}",
         "parameters": [
           {
             "name": "trip_id",
@@ -7258,16 +7258,6 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Каркас: бизнес-логика не реализована",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
           }
         },
         "requestBody": {
@@ -7281,11 +7271,11 @@
           }
         },
         "description": "Ответы и бизнес-условия определены в PDF v0.3. Код 202 содержит исходный ответ приёма, а не текущее состояние worker.",
-        "x-implementation-status": "scaffold"
+        "x-implementation-status": "demo"
       },
       "delete": {
         "operationId": "delete_favorites_trip_id",
-        "summary": "[ЗАГЛУШКА] DELETE /favorites/{trip_id}",
+        "summary": "DELETE /favorites/{trip_id}",
         "parameters": [
           {
             "name": "trip_id",
@@ -7564,26 +7554,16 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Каркас: бизнес-логика не реализована",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
           }
         },
         "description": "Ответы и бизнес-условия определены в PDF v0.3. Код 202 содержит исходный ответ приёма, а не текущее состояние worker.",
-        "x-implementation-status": "scaffold"
+        "x-implementation-status": "demo"
       }
     },
     "/favorites": {
       "get": {
         "operationId": "get_favorites",
-        "summary": "[ЗАГЛУШКА] GET /favorites",
+        "summary": "GET /favorites",
         "parameters": [
           {
             "name": "limit",
@@ -7872,20 +7852,10 @@
                 }
               }
             }
-          },
-          "501": {
-            "description": "Каркас: бизнес-логика не реализована",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
           }
         },
         "description": "Ответы и бизнес-условия определены в PDF v0.3. Код 202 содержит исходный ответ приёма, а не текущее состояние worker.",
-        "x-implementation-status": "scaffold"
+        "x-implementation-status": "demo"
       }
     },
     "/trips/{trip_id}/share": {
@@ -8911,6 +8881,15 @@
           "403": {
             "description": "Session or Origin required"
           },
+          "413": {
+            "description": "Request too large"
+          },
+          "415": {
+            "description": "JSON required"
+          },
+          "422": {
+            "description": "Validation error"
+          },
           "429": {
             "description": "Preview rate limit exceeded",
             "headers": {
@@ -8929,15 +8908,6 @@
                 }
               }
             }
-          },
-          "413": {
-            "description": "Request too large"
-          },
-          "415": {
-            "description": "JSON required"
-          },
-          "422": {
-            "description": "Validation error"
           },
           "502": {
             "description": "Ошибка входа или временная недоступность зависимости",
