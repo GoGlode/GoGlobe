@@ -1284,6 +1284,10 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             fail_run(owner, search_id, run_id, "AGENT_INVALID_RESPONSE",
                      "Ответ агента не соответствует контракту", False)
         except Exception as exc:
+            if now() >= deadline:
+                fail_run(owner, search_id, run_id, "SEARCH_TIMEOUT",
+                         "Агент не ответил в пределах общего срока", True)
+                return
             logging.getLogger("goglobe").warning(
                 "Agent run failed search_id=%s run_id=%s error_type=%s",
                 search_id, run_id, type(exc).__name__,
