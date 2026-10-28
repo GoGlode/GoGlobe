@@ -5,10 +5,17 @@
 """
 from __future__ import annotations
 
+import re
+from datetime import date
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Предел длины пользовательского запроса: защита от «простыней» и мусора (F-18).
+MAX_QUERY_LENGTH = 2000
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class Money(BaseModel):
@@ -22,16 +29,36 @@ class DateRange(BaseModel):
 
     model_config = {"populate_by_name": True}
 
+    @field_validator("from_", "to")
+    @classmethod
+    def _validate_iso_date(cls, value: str) -> str:
+        """Принимаем только ISO-даты: «10.11.2026» и «2026-02-30» — 422, а не 500 (F-03, F-13)."""
+        if not _ISO_DATE_RE.match(value):
+            raise ValueError("Дата должна быть строкой в формате YYYY-MM-DD")
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"Некорректная календарная дата: {value}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _validate_order(self) -> DateRange:
+        """from <= to: перевёрнутый диапазон отсекаем на входе (F-08)."""
+        if self.from_ > self.to:
+            raise ValueError("Дата начала позже даты окончания")
+        return self
+
 
 class SearchParams(BaseModel):
     dates: DateRange | None = None
     budget: Money | None = None  # Money.amount трактуется как max
-    travelers: int | None = None
-    wishes: list[str] = []  # sea_view, direct_flight, ...
+    # travelers=0 или отрицательное число — ошибка ввода, а не повод угадывать (F-01b, F-07).
+    travelers: int | None = Field(default=None, ge=1)
+    wishes: list[str] = Field(default_factory=list)  # sea_view, direct_flight, ...
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(min_length=1)
+    query: str = Field(min_length=1, max_length=MAX_QUERY_LENGTH)
     params: SearchParams | None = None
     # Клиент может сгенерировать id заранее, чтобы открыть SSE до завершения POST
     search_id: str | None = None

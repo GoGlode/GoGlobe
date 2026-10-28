@@ -1,12 +1,15 @@
 """Сквозной сценарий на моках: тот же запрос, что на демо (docs/demo-scenario.md)."""
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
 
-DEMO = ("Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей. "
-        "Нужен хороший отель рядом с морем и прямой перелёт")
+DEMO = (
+    "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей. "
+    "Нужен хороший отель рядом с морем и прямой перелёт"
+)
 
 
 @pytest.fixture(autouse=True)

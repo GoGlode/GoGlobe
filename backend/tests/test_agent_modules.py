@@ -47,8 +47,9 @@ def test_parse_reference_demo_query() -> None:
     # Конкретный день не указан — честный парсер не угадывает дату.
     assert parsed.dates is None
     # Должно быть предупреждение о неполной дате.
-    assert any("ноябр" in w.lower() or "дата" in w.lower() or "число" in w.lower()
-               for w in parsed.warnings)
+    assert any(
+        "ноябр" in w.lower() or "дата" in w.lower() or "число" in w.lower() for w in parsed.warnings
+    )
     assert parsed.travelers == 2
     assert parsed.budget is not None
     assert parsed.budget.amount == 120000
@@ -219,8 +220,9 @@ def test_bug3_may_still_detected() -> None:
     assert parsed.duration_days == 5
     # Месяц май определён, день не указан → dates=None + warning
     assert parsed.dates is None
-    assert any("мае" in w.lower() or "май" in w.lower() or "число" in w.lower()
-               for w in parsed.warnings)
+    assert any(
+        "мае" in w.lower() or "май" in w.lower() or "число" in w.lower() for w in parsed.warnings
+    )
 
 
 def test_bug3_marsh_not_march() -> None:
@@ -242,8 +244,10 @@ def test_bug3_mart_and_maya_detected() -> None:
     parsed_maya = parse_mock("Бали в мая на 10 дней")
     assert parsed_maya.duration_days == 10
     assert parsed_maya.dates is None
-    assert any("мае" in w.lower() or "май" in w.lower() or "число" in w.lower()
-               for w in parsed_maya.warnings)
+    assert any(
+        "мае" in w.lower() or "май" in w.lower() or "число" in w.lower()
+        for w in parsed_maya.warnings
+    )
 
 
 def test_bug1_llm_fallback_on_empty_key() -> None:
@@ -262,9 +266,7 @@ def test_bug1_llm_fallback_on_empty_key() -> None:
         mock_settings.return_value.llm_model = "deepseek-chat"
         mock_settings.return_value.use_mock_ai = False
 
-        result, _ = asyncio.run(
-            parse_llm("Турция с 10 по 15 ноября на двоих, бюджет 80к")
-        )
+        result, _ = asyncio.run(parse_llm("Турция с 10 по 15 ноября на двоих, бюджет 80к"))
     # Откат на mock отработал корректно
     assert result.destination == "Турция"
     assert result.dates is not None  # точный диапазон → даты есть
@@ -280,8 +282,10 @@ def test_bug1_llm_fallback_on_llm_crash() -> None:
 
     from app.agent.parser import parse_llm
 
-    with patch("app.agent.parser.get_settings") as mock_settings, \
-         patch("httpx.AsyncClient") as mock_client:
+    with (
+        patch("app.agent.parser.get_settings") as mock_settings,
+        patch("httpx.AsyncClient") as mock_client,
+    ):
         mock_settings.return_value.llm_api_key = "fake-key-for-test"
         mock_settings.return_value.llm_base_url = "https://api.deepseek.com/v1"
         mock_settings.return_value.llm_model = "deepseek-chat"
@@ -519,7 +523,7 @@ def test_ranking_order_descending() -> None:
     assert len(scores) >= 2, "Должно быть хотя бы 2 оффера для проверки порядка"
     for i in range(len(scores) - 1):
         assert scores[i] >= scores[i + 1], (
-            f"Нарушен порядок ранжирования: scores[{i}]={scores[i]} < scores[{i+1}]={scores[i+1]}"
+            f"Нарушен порядок ранжирования: scores[{i}]={scores[i]} < scores[{i + 1}]={scores[i + 1]}"
         )
 
 
@@ -528,9 +532,7 @@ def test_reference_query_dubai_budget_usd() -> None:
 
     Проверяет конкретные поля parsed и корректность обработки.
     """
-    query = (
-        "Дубай с 1 по 8 декабря на двоих, бюджет 3000 долларов, прямой перелёт, всё включено"
-    )
+    query = "Дубай с 1 по 8 декабря на двоих, бюджет 3000 долларов, прямой перелёт, всё включено"
     r = client.post("/api/search", json={"query": query}).json()
 
     parsed = r["parsed"]
@@ -570,17 +572,17 @@ def test_reference_query_egypt_family_sea() -> None:
 
 
 def test_destination_search_warnings_and_explanation_in_response() -> None:
-    """Задача 4: сезонность и температура из destination_search попадают в warnings и explanation."""
-    query = (
-        "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей"
-    )
+    """Задача 4: сезонность и температура из destination_search попадают в explanation.pros.
+
+    После F-04 справка о сезоне/погоде не считается деградацией данных:
+    она не попадает в warnings, поэтому успешный поиск честно получает статус ok.
+    """
+    query = "Хочу на 5 дней в Турцию с 5 по 10 ноября, на двоих, бюджет до 120 000 рублей"
     r = client.post("/api/search", json={"query": query}).json()
 
-    assert r["status"] in ("ok", "partial")
-    warnings_text = " ".join(r.get("warnings", []))
-    assert "сезон" in warnings_text.lower()
-    assert "температур" in warnings_text.lower()
+    assert r["status"] == "ok"
+    assert r["warnings"] == []
     assert len(r["offers"]) > 0
     first_exp = r["offers"][0]["explanation"]
     assert any("сезон" in p.lower() for p in first_exp["pros"])
-
+    assert any("температур" in p.lower() for p in first_exp["pros"])

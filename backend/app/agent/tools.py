@@ -19,9 +19,15 @@ import logging
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from app.agent.currency import format_money
 from app.agent.explain import explain as explain_tool
 from app.agent.ranking import score as rank_score
-from app.agent.validation import is_available, total_price, within_budget
+from app.agent.validation import (
+    CurrencyMismatchError,
+    is_available,
+    total_price,
+    within_budget,
+)
 from app.integrations.base import FlightProvider, HotelProvider, ProviderError
 from app.schemas.providers import FlightOption, HotelOption
 from app.schemas.search import DateRange, Explanation, Money, ParsedQuery
@@ -82,12 +88,20 @@ class SearchExecutionPlan:
 
 @dataclass
 class DestinationInfo:
-    """Информация о локации, погоде и сезонности."""
+    """Справочная информация о локации, погоде и сезонности.
+
+    `is_reference=True` означает: это статическая справка MVP, а не прогноз и не
+    данные провайдера. Такие сведения нельзя использовать как доказательство
+    пригодности варианта — только как пояснение с пометкой «справочно».
+    При интеграции заменяется destination-провайдером Backend №1.
+    """
 
     destination: str
     season_status: str = "Рекомендуемый сезон"
     temperature_c: int | None = None
     highlights: list[str] = field(default_factory=list)
+    is_reference: bool = True
+    source: str = "static_reference"
 
 
 _DESTINATION_KNOWLEDGE: dict[str, DestinationInfo] = {
@@ -147,7 +161,8 @@ async def flight_search(
 ) -> list[FlightOption]:
     """Flight Search Tool: вызов провайдера перелётов с изоляцией сбоев."""
     try:
-        return await p.search(dest, dates, n)
+        # Страховка от None/0: провайдеры умножают цену на число путешественников (F-01).
+        return await p.search(dest, dates, max(1, int(n or 1)))
     except ProviderError as e:
         warnings.append(f"Перелёты временно недоступны: {e}")
         return []
@@ -158,7 +173,7 @@ async def hotel_search(
 ) -> list[HotelOption]:
     """Hotel Search Tool: вызов провайдера отелей с изоляцией сбоев."""
     try:
-        return await p.search(dest, dates, n)
+        return await p.search(dest, dates, max(1, int(n or 1)))
     except ProviderError as e:
         warnings.append(f"Отели временно недоступны: {e}")
         return []
@@ -174,14 +189,21 @@ def validate_combo(
     hotel: HotelOption,
     budget: Money | None,
     direct_only: bool = False,
-) -> tuple[bool, Money]:
-    """Validation Tool: проверяет соответствие пары перелёт+отель ограничениям."""
-    if direct_only and not flight.direct:
-        return False, Money(amount=0)
-    if not is_available(hotel):
-        return False, Money(amount=0)
+) -> tuple[bool, Money | None]:
+    """Validation Tool: проверяет соответствие пары перелёт+отель ограничениям.
 
-    total = total_price(flight, hotel)
+    Если валюты перелёта и отеля не сводятся без пересчёта, вариант отклоняется
+    (итоговая сумма не подтверждена) — см. `validation.CurrencyMismatchError`.
+    """
+    if direct_only and not flight.direct:
+        return False, None
+    if not is_available(hotel):
+        return False, None
+
+    try:
+        total = total_price(flight, hotel)
+    except CurrencyMismatchError:
+        return False, None
     if not within_budget(total, budget):
         return False, total
 
@@ -241,7 +263,7 @@ def build_search_plan(
     sea_view = "sea_view" in parsed.wishes
 
     flight_msg = (
-        f"Ищу прямые перелёты в {dest_label}…" if direct_only else f"Ищу перелёты в {dest_label}…"
+        f"Ищу прямые перелёты: {dest_label}…" if direct_only else f"Ищу перелёты: {dest_label}…"
     )
     hotel_msg = (
         f"Подбираю отели у моря ({dest_label})…" if sea_view else f"Подбираю отели в {dest_label}…"
@@ -249,6 +271,7 @@ def build_search_plan(
 
     budget_max = parsed.budget.amount if parsed.budget else None
     budget_currency = parsed.budget.currency if parsed.budget else "RUB"
+    travelers = parsed.travelers if parsed.travelers and parsed.travelers >= 1 else 1
 
     steps = [
         PlannedToolStep(
@@ -266,7 +289,7 @@ def build_search_plan(
             filters={
                 "destination": parsed.destination,
                 "direct_only": direct_only,
-                "travelers": parsed.travelers or 1,
+                "travelers": travelers,
             },
         ),
         PlannedToolStep(
@@ -277,17 +300,15 @@ def build_search_plan(
             filters={
                 "destination": parsed.destination,
                 "wishes": parsed.wishes,
-                "travelers": parsed.travelers or 1,
+                "travelers": travelers,
             },
         ),
         PlannedToolStep(
             tool=AgentToolName.VALIDATION,
             stage=SearchStage.VALIDATING,
             message=(
-                f"Проверяю полную стоимость (бюджет до {budget_max:,} {budget_currency})…".replace(
-                    ",", " "
-                )
-                if budget_max
+                f"Проверяю полную стоимость (бюджет до {format_money(parsed.budget)})…"
+                if parsed.budget
                 else "Проверяю доступность и согласованность дат…"
             ),
             required=True,
