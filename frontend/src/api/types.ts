@@ -17,6 +17,8 @@ export interface ParsedQuery {
   travelers?: number | null;
   budget?: Money | null;
   wishes: string[];
+  /** Предупреждения парсера (например, «месяц без числа») — дублируются в SearchResponse.warnings. */
+  warnings?: string[];
 }
 
 export interface Hotel {

@@ -1,0 +1,10 @@
+{
+  "version": "0.3.1",
+  "sha256": {
+    "GoGlobe_openapi_v0.3.json": "741197b0e2ea6084604bcb7f18c1ddc04f68569e5f88e8385d9481a1d228c7bd",
+    "GoGlobe_examples_v0.3.json": "357df338979d05c81b0de5b22efc61b311def9266e485a8a4ec7c940363a3e48",
+    "GoGlobe_openapi_v0.3.1.json": "4b689ad026e59e48493fc72cbb2747a963bbcfea13b2e4c5881dc1c6012ca391",
+    "GoGlobe_examples_v0.3.1.json": "c45f57e09eed6b4b73ed6fb62ccab9a75000dbf95991ed2a046f876034fae3aa",
+    "GoGlobe_API_contracts_v0.3.pdf": "7fa9f5bded030667fe1028da90a4a2a29f62e89723447d32054b01ee6982ad71"
+  }
+}
