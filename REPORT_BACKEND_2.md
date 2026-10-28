@@ -1,4 +1,4 @@
-# Полный отчёт о работе: AI-агент GoGlobe (Backend №2)
+﻿# Полный отчёт о работе: AI-агент GoGlobe (Backend №2)
 
 > **Подпись:** Backend №2 — AI-агент · ветка `dev/backend-2` · HEAD `2a86ef5` + правки 28.10.2026
 > **Дата:** 27 октября 2026 г. (обновлено 28 октября 2026 г., 21:10 MSK)
@@ -542,10 +542,10 @@ foreach ($q in $cases) {
 | 5 | Обработка ошибок LLM | ✅ выполнено | `parser.py`: warning о фолбэке, в лог только тип ошибки, timeout 10 с, битый JSON → фолбэк; 6 тестов F-24 |
 | 6 | Подготовка к API v0.3 | ✅ выполнено: разбор + рабочий адаптер | [`backend/app/agent/v03.py`](backend/app/agent/v03.py): модели `Snapshot`/`Components`/`HotelList`/`Price`/`Question`/`Warning`, `params_from_parsed`, `parsed_from_params`, `snapshot_from`; 40 тестов, включая сверку полей моделей со схемами OpenAPI v0.3. Документ [`docs/backend-2-v0.3-integration.md`](docs/backend-2-v0.3-integration.md): 12 различий, интерфейс, 7 блокеров B1–B7. Общий контракт не менялся |
 | 7 | Разделение ответственности агент/провайдеры | ✅ выполнено | агент работает только через `app/integrations/base.py` (`FlightProvider`/`HotelProvider`); HTTP, сессии, кэш, провайдеры — `api/`, `cache/`, `integrations/` (Backend №1); границы зафиксированы в §2–3 документа v0.3 |
-| 8 | PR из `dev/backend-2` | ⚠️ подготовлен, не отправлен | ветка закоммичена локально; тело PR — §7.9. `gh` в окружении нет, push требует доступ к GitHub (см. §9.4) |
+| 8 | PR из `dev/backend-2` | ✅ выполнено | ветка запушена (`origin/dev/backend-2` @ `ff7b42d`), создан **PR #9**: https://github.com/GoGlode/GoGlobe/pull/9, база `main`, без слияния |
 | 9 | Интеграционные тесты | ✅ выполнено | `tests/test_integration_pipeline.py`: 8 сценариев ровно по списку чек-листа |
 
-**Итог: 8 из 9 пунктов закрыты полностью, 1 — частично по внешней причине** (push/PR: нет доступа к GitHub из окружения; см. §9.4).
+**Итог: 9 из 9 пунктов закрыты**; открытых пунктов чек-листа нет.
 
 ### 7.9. Прогон на падения 28.10.2026 и PR
 
@@ -582,12 +582,12 @@ All checks passed!
 - Два предупреждения — инфраструктурные (`StarletteDeprecationWarning`, `PytestCacheWarning` Windows ACL), к продукту не относятся.
 - До правок 28.10.2026 на этих же сценариях падали 19 проверок (по одной-две на F-20…F-24).
 
-**PR (подготовлен):**
+**PR (создан):**
 
 - Ветка: `dev/backend-2`, база: `main`.
-- Заголовок: `feat(backend-2): AI search agent — strict direct flights, currency safety, honest data, API v0.3 readiness`.
+- **PR #9:** https://github.com/GoGlode/GoGlobe/pull/9 (state: open, 28.10.2026 21:50 MSK).
+- Заголовок: `feat(backend-2): AI search agent — P0 fixes, API v0.3 adapter, 121 tests`.
 - Тело PR: сводка §1, чек-лист §7.8, результаты тестов §7.9, документ интеграции `docs/backend-2-v0.3-integration.md`, ограничения §8.
-- Ссылка на создание после push: `https://github.com/GoGlode/GoGlobe/compare/main...dev/backend-2?expand=1`.
 - Не сливать в `main` до ревью Backend №1 (требование чек-листа).
 
 ---
@@ -626,7 +626,7 @@ All checks passed!
 - [x] Подготовлен документ интеграции с v0.3 (`docs/backend-2-v0.3-integration.md`).
 - [x] Реализован адаптер v0.3: `backend/app/agent/v03.py`, 40 тестов, компонент `flights` честно `blocked` (у провайдера нет сегментов).
 - [x] Папка `GoGlobe ненужный/` в репозитории отсутствует (проверено).
-- [ ] PR в `main` и ревью Backend №1 — тело PR готово (§7.9), push требует доступа к GitHub.
+- [x] PR #9 создан (https://github.com/GoGlode/GoGlobe/pull/9), ревью Backend №1 — следующий шаг.
 
 ### 9.2. Рекомендуемый порядок
 
@@ -647,18 +647,13 @@ All checks passed!
 - **Два логических коммита** — конфигурация отдельно, агент отдельно.
 - **Три существующих коммита** — готовы по Conventional Commits, можно merge commit.
 
-### 9.4. Что нужно от владельца репозитория для PR
+### 9.4. PR и тег submission
 
-В окружении нет `gh` CLI и нет подтверждённого доступа на push, поэтому PR не создан автоматически. Два варианта:
-
-```powershell
-cd "C:\My_programms\Antigravity IDE\Программы\GoGlobe"
-git push -u origin dev/backend-2
-# затем открыть:
-# https://github.com/GoGlode/GoGlobe/compare/main...dev/backend-2?expand=1
-```
-
-Тело PR — §7.9 (заголовок, чек-лист, тесты, документ интеграции, ограничения). Ветку **не** сливать в `main` до ревью Backend №1 — как требует чек-лист.
+- Ветка запушена: `origin/dev/backend-2` @ `ff7b42d`.
+- PR создан: **#9** — https://github.com/GoGlode/GoGlobe/pull/9 (open, база `main`).
+- Push выполнялся с расширенными правами: менеджер учётных данных Git не работает внутри песочницы.
+- Ветку **не** сливать в `main` до ревью Backend №1 — как требует чек-лист.
+- Тег `submission` по правилам организаторов ставится на **последний коммит основной ветки** (`main`) после слияния. Сейчас `main` = `2e839c3` и нашей работы не содержит, поэтому тег на нём ставить нельзя — это сделает тот, кто мержит (или Тимофей при связке). Наш HEAD помечен отдельным тегом `backend-2-submission`, чтобы финальный коммит ветки был однозначно определён.
 
 ---
 
@@ -815,6 +810,8 @@ HEAD:      2a86ef5 + правки 28.10.2026 (локальный коммит)
 ```
 
 **Подписано:** Backend №2 · `dev/backend-2` · 28.10.2026.
+
+
 
 
 
