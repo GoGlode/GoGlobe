@@ -243,3 +243,28 @@ def test_clarification_completion_is_idempotent(client):
                          headers={"Idempotency-Key": key})
     assert first.status_code == second.status_code == 202
     assert first.json() == second.json()
+
+
+def test_clarification_idempotency_key_cannot_cross_search_boundary(client):
+    first = post_search(client, "Хочу путешествие")
+    second = post_search(client, "Хочу путешествие")
+    first_snapshot = client.get(first.headers["location"]).json()
+    key = str(uuid4())
+    payload = {
+        "question_id": first_snapshot["clarification"]["question_id"],
+        "expected_revision": first_snapshot["revision"],
+        "answer": "Рим",
+    }
+
+    accepted = client.post(
+        first.headers["location"] + "/clarifications", json=payload,
+        headers={"Idempotency-Key": key},
+    )
+    conflict = client.post(
+        second.headers["location"] + "/clarifications", json=payload,
+        headers={"Idempotency-Key": key},
+    )
+
+    assert accepted.status_code == 202
+    assert conflict.status_code == 409
+    assert conflict.json()["error"]["code"] == "IDEMPOTENCY_CONFLICT"

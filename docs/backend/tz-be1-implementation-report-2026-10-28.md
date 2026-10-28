@@ -24,9 +24,13 @@ Date: 2026-10-28 (Europe/Moscow)
   quote-search, HotelList and FlightList endpoints. Quote inputs are explicit,
   errors identify the missing field, results are persisted separately from the
   itinerary and demo offers do not claim live availability or booking URLs.
+- Quote-search now uses the same persisted asynchronous lifecycle as itinerary
+  planning: queued acceptance is committed before provider work, cancellation
+  blocks late writes, revision conflicts are terminal and non-destructive, and
+  unfinished quote runs resume after restart.
 - Made an exact schedule retry idempotent and aligned the default production
   frontend CORS allowlist with `.env.example`.
-- Added bounded quote-search claims so concurrent replay of one idempotency key
+- Added transactional quote-search idempotency so concurrent replay of one key
   performs one provider run, streaming limits for Preview bodies, physical TTL
   cleanup and deferred SQLite transactions for read-only requests.
 - Added canonical v0.3 JSON copies, additive v0.3.1 OpenAPI/examples, changelog
@@ -35,7 +39,7 @@ Date: 2026-10-28 (Europe/Moscow)
 ## Verification evidence
 
 - Final full pytest regression from the monorepo root:
-  `456 passed, 1 warning in 95.71s` (Starlette TestClient deprecation notice).
+  `463 passed, 1 warning in 166.19s` (Starlette TestClient deprecation notice).
 - Ruff: clean.
 - `python -m compileall -q app`: clean.
 - `pip check`: no broken requirements.

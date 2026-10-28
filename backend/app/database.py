@@ -28,14 +28,23 @@ class Database:
                 CREATE TABLE IF NOT EXISTS search_inputs(
                     search_id TEXT PRIMARY KEY, owner TEXT NOT NULL, query TEXT NOT NULL,
                     params TEXT NOT NULL, expires TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS quote_inputs(
+                    search_id TEXT PRIMARY KEY, owner TEXT NOT NULL, trip_id TEXT NOT NULL,
+                    payload TEXT NOT NULL, expires TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS search_runs(
                     search_id TEXT NOT NULL, owner TEXT NOT NULL, run_id TEXT NOT NULL,
-                    state TEXT NOT NULL, deadline_at TEXT NOT NULL,
+                    kind TEXT NOT NULL DEFAULT 'plan', state TEXT NOT NULL,
+                    deadline_at TEXT NOT NULL,
                     expected_revision INTEGER NOT NULL, updated_at TEXT NOT NULL,
                     PRIMARY KEY(search_id,run_id));
                 CREATE INDEX IF NOT EXISTS idx_search_runs_state
                     ON search_runs(state, deadline_at);
             """)
+            columns = {row["name"] for row in db.execute("PRAGMA table_info(search_runs)")}
+            if "kind" not in columns:
+                db.execute(
+                    "ALTER TABLE search_runs ADD COLUMN kind TEXT NOT NULL DEFAULT 'plan'"
+                )
 
     @contextmanager
     def connect(self, *, write: bool = True):

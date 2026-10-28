@@ -47,8 +47,8 @@
 
 Итого по v0.3: **15 demo**, **12 scaffold**. `demo` не означает завершённый
 production endpoint: текущий runtime поддерживает clarification/cancellation и
-snapshot quote flow, но внешние production-провайдеры и деплой этим статусом не
-подтверждаются.
+persisted asynchronous snapshot quote flow с cancel/restart guards, но внешние
+production-провайдеры и деплой этим статусом не подтверждаются.
 
 ## Аддитивное расширение v0.3.1
 
