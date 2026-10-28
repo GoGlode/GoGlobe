@@ -78,7 +78,15 @@ def test_timeout_failure_is_persisted_and_idempotency_replays_acceptance(tmp_pat
                 await asyncio.sleep(1)
             return await DemoPlanner().plan(context)
     agent = Agent()
-    with TestClient(create_app(str(tmp_path / "timeout.sqlite3"), agent=agent, agent_timeout=0.05), headers=ORIGIN) as client:
+    # Keep the deadline short enough to cancel the 1 s branch, but leave
+    # headroom for the successful demo planner on loaded CI/Windows hosts.
+    with TestClient(
+        create_app(
+            str(tmp_path / "timeout.sqlite3"), agent=agent,
+            agent_timeout=0.2,
+        ),
+        headers=ORIGIN,
+    ) as client:
         login(client)
         key = str(uuid4())
         response = search(client, key)
