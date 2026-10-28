@@ -1,7 +1,7 @@
 // Поиск API v0.3: создание, снимок, ответ на вопрос, отмена, SSE. Владелец: Frontend №1.
 // Только настоящий backend (`/api/v1/*`). Старого `/api/search` здесь нет и быть не должно.
 import { ApiError, apiCall } from "./trips";
-import { isTerminal, type Accepted, type PlanRequest, type Snapshot } from "./v03Search";
+import { isTerminal, type Accepted, type Params, type PlanRequest, type Snapshot } from "./v03Search";
 
 const enc = encodeURIComponent;
 const BASE = import.meta.env.VITE_API_URL as string | undefined;
@@ -15,6 +15,17 @@ export const getSearch = (id: string, signal?: AbortSignal) => apiCall<Snapshot>
 export const answerQuestion = (id: string, a: { question_id: string; expected_revision: number; answer: string }, key: string) =>
   apiCall<Accepted>("POST", `/searches/${enc(id)}/clarifications`, a, { "Idempotency-Key": key });
 export const cancelSearch = (id: string) => apiCall<Snapshot>("PUT", `/searches/${enc(id)}/cancellation`, {}).then(checkSnapshot);
+
+export interface IntentPreview {
+  preview_id: string;
+  parsed: Params;
+  questions: { id: string; field: string; kind: string; title: string; required: boolean; options: unknown[] }[];
+  warnings: { code: string; message: string }[];
+  analysis_mode: "fallback" | "model";
+}
+
+export const previewIntent = (query: string, params: Params, signal?: AbortSignal) =>
+  apiCall<IntentPreview>("POST", "/intent/preview", { query, params }, {}, signal);
 
 /** Невалидный JSON/форма ответа не должны ронять UI — превращаем в понятную ошибку. */
 export function checkSnapshot(s: unknown): Snapshot {

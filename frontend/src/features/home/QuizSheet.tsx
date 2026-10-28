@@ -3,6 +3,8 @@
 // Ответы кладутся прямо в Params контракта v0.3 (даты, состав с возрастами детей, бюджет в копейках, wishes) — не в строки.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { previewIntent } from "../../api/searches";
+import { isLive } from "../../api/trips";
 import type { Params, Wish } from "../../api/v03Search";
 import { dateRange, money } from "../../data/format";
 import { travelersLabel, uiFromPlan } from "../../data/plan";
@@ -48,11 +50,12 @@ export default function QuizSheet({ query, params, onDone, onClose }: {
   query: string; params: SearchParamsUI; onDone: (query: string, params: SearchParamsUI) => void; onClose: () => void;
 }) {
   // Что уже известно — не спрашиваем. Вопросов не больше 4; «чего хочется» — только если остался запас и пожеланий в тексте нет.
-  const u = useMemo(() => parseIntent(query, params.plan ?? {}), [query, params.plan]);
+  const local = useMemo(() => parseIntent(query, params.plan ?? {}), [query, params.plan]);
+  const [u, setU] = useState(local);
   const steps = useMemo<Step[]>(() => { const q: Step[] = u.missing.slice(0, 4); if (q.length > 0 && q.length < 4 && !u.plan.wishes?.length) q.push("prefs"); return [...q, "review"]; }, [u]);
   const [i, setI] = useState(0);
   const step = steps[i];
-  const [plan, setPlan] = useState<Params>(u.plan);
+  const [plan, setPlan] = useState<Params>(local.plan);
   const [hint, setHint] = useState<string | null>(null); // мягкая подсказка по времени — уходит в текст запроса
   const [mood, setMood] = useState<string[]>([]);
   const [datesMode, setDatesMode] = useState<"exact" | "unknown" | null>(null);
@@ -60,14 +63,31 @@ export default function QuizSheet({ query, params, onDone, onClose }: {
   const [who, setWho] = useState<"1" | "2" | "kids" | "group" | null>(null);
   const [budgetText, setBudgetText] = useState("");
   const timer = useRef<number>();
+  const edited = useRef(false);
   useEffect(() => () => clearTimeout(timer.current), []);
+  useEffect(() => {
+    setU(local);
+    setPlan(local.plan);
+    setI(0);
+    edited.current = false;
+    if (!isLive) return;
+    const ctl = new AbortController();
+    void previewIntent(query, local.plan, ctl.signal).then((preview) => {
+      if (ctl.signal.aborted || edited.current) return;
+      const parsed = Object.fromEntries(Object.entries(preview.parsed).filter(([, value]) => value != null)) as Partial<Params>;
+      const understood = parseIntent(query, { ...local.plan, ...parsed });
+      setU({ ...understood, monthHint: local.monthHint ?? understood.monthHint });
+      setPlan(understood.plan);
+    }).catch(() => { /* Локальный безопасный разбор остаётся рабочим fallback. */ });
+    return () => ctl.abort();
+  }, [query, local]);
   useEffect(() => {
     const on = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
   }, [onClose]);
 
-  const patch = (p: Partial<Params>) => setPlan((c) => ({ ...c, ...p }));
+  const patch = (p: Partial<Params>) => { edited.current = true; setPlan((c) => ({ ...c, ...p })); };
   const go = () => setI((n) => Math.min(n + 1, steps.length - 1));
   const advance = (fn: () => void) => { fn(); clearTimeout(timer.current); timer.current = window.setTimeout(go, 260); };
   const errors = validatePlan(plan);
