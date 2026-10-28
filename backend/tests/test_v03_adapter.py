@@ -1,6 +1,6 @@
 """Тесты адаптера AI-агента к контракту API v0.3.
 
-Проверяется не «на глаз», а сверкой с `docs/api/v0.3/GoGlobe_openapi_v0.3.json`:
+Проверяется не «на глаз», а сверкой с `docs/api/v0.3/GoGlobe_openapi_v0.3.1.json`:
 наборы полей моделей должны совпадать со схемами, иначе фронт и Backend №1
 получат JSON, которого нет в контракте.
 
@@ -27,6 +27,9 @@ from app.agent.v03 import (
     HotelContextV03,
     HotelListV03,
     HotelOfferV03,
+    IntentPreviewQuestionV03,
+    IntentPreviewRequestV03,
+    IntentPreviewResponseV03,
     ItemV03,
     MoneyV03,
     ParamsV03,
@@ -40,6 +43,7 @@ from app.agent.v03 import (
     WarningV03,
     params_from_parsed,
     parsed_from_params,
+    preview_from,
     question_from,
     snapshot_from,
     warning_code,
@@ -49,7 +53,7 @@ from app.main import app
 from app.schemas.search import DateRange, Money, ParsedQuery, SearchResponse, SearchStatus
 
 OPENAPI = (
-    Path(__file__).resolve().parents[2] / "docs" / "api" / "v0.3" / "GoGlobe_openapi_v0.3.json"
+    Path(__file__).resolve().parents[2] / "docs" / "api" / "v0.3" / "GoGlobe_openapi_v0.3.1.json"
 )
 
 client = TestClient(app)
@@ -94,6 +98,10 @@ MODEL_SCHEMAS = [
     (HotelOfferV03, "HotelOffer"),
     (HotelListV03, "HotelList"),
     (ParamsV03, "Params"),
+    (ParamsV03, "IntentPreviewParsed"),
+    (IntentPreviewRequestV03, "IntentPreviewRequest"),
+    (IntentPreviewQuestionV03, "IntentPreviewQuestion"),
+    (IntentPreviewResponseV03, "IntentPreviewResponse"),
     (AcceptedV03, "Accepted"),
     (ErrorV03, "Error"),
     (SnapshotV03, "Snapshot"),
@@ -349,3 +357,64 @@ def test_currency_warning_is_mapped_for_usd_budget() -> None:
     assert normalized is not None
     assert note is not None
     assert warning_code(note) == "CURRENCY_CONVERTED"
+
+
+# ---------------------------------------------------------------------------
+# Intent preview v0.3.1
+# ---------------------------------------------------------------------------
+
+
+def test_preview_for_incomplete_query_returns_questions() -> None:
+    query = "Хочу куда-нибудь в ноябре"
+    result = _result(query)
+
+    preview = preview_from(result, query=query, used_llm=False)
+
+    assert preview.preview_id.startswith("ip_")
+    assert preview.preview_id.startswith("ip_"), "схема требует префикс ip_"
+    assert preview.analysis_mode == "fallback"
+    assert 1 <= len(preview.questions) <= 3
+    question = preview.questions[0]
+    assert question.kind in ("text", "number", "travelers", "money")
+    assert question.title
+    assert question.options == [], "Варианты ответа не выдумываем без согласованного контракта"
+
+
+def test_preview_for_complete_query_has_no_questions() -> None:
+    query = "Турция с 5 по 10 ноября на двоих"
+    result = _result(query)
+
+    preview = preview_from(result, query=query, used_llm=True)
+
+    assert preview.questions == []
+    assert preview.analysis_mode == "llm"
+    assert preview.parsed.destination == "Турция"
+    assert preview.parsed.dates is not None
+    assert preview.parsed.travelers is not None and preview.parsed.travelers.adults == 2
+
+
+def test_preview_does_not_create_search_or_trip_ids() -> None:
+    result = _result("Турция с 5 по 10 ноября на двоих")
+    preview = preview_from(result, query="Турция с 5 по 10 ноября на двоих")
+
+    payload = preview.model_dump()
+    assert set(payload) == {
+        "preview_id",
+        "parsed",
+        "questions",
+        "warnings",
+        "analysis_mode",
+    }
+    assert not payload["preview_id"].startswith("s_")
+    assert "search_id" not in payload and "trip_id" not in payload
+
+
+def test_preview_fields_match_v031_schema(schemas: dict) -> None:
+    assert set(schemas["IntentPreviewResponse"]["properties"]) == {
+        "preview_id",
+        "parsed",
+        "questions",
+        "warnings",
+        "analysis_mode",
+    }
+    assert "questions" in schemas["IntentPreviewResponse"]["properties"]

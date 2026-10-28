@@ -1,8 +1,8 @@
-# AI-агент и API v0.3: различия, интерфейс интеграции, блокеры
+# AI-агент и API v0.3.1: различия, интерфейс интеграции, блокеры
 
 **Роль:** Backend №2 — AI-агент · **Ветка:** `dev/backend-2` · **Дата:** 28.10.2026
 **Основание:** чек-лист от 26.10.2026, пункт 6 «Подготовить AI-агента к новому API-контракту».
-**Источник контракта:** `docs/api/v0.3/` (`GoGlobe_openapi_v0.3.json`, `GoGlobe_examples_v0.3.json`, `README.md`), забран из `origin/dev/backend-1`.
+**Источник контракта:** `docs/api/v0.3/` (`GoGlobe_openapi_v0.3.1.json`, `GoGlobe_examples_v0.3.1.json`, `CHANGELOG_v0.3.1.md`, `manifest.json`), синхронизирован с веткой `origin/feat/be1-v03-main-integration` @ `364ccf4`.
 
 > Документ **не меняет** общий контракт. Всё, что ниже помечено «предложение», требует согласования с Backend №1 и Frontend №1.
 
@@ -177,16 +177,17 @@ Frontend №1 сообщил: «вопросы показываются текс
 4. Совместный прогон 8 сценариев из чек-листа на staging с реальными провайдерами.
 5. Только после этого — удаление v0-роутов и `frontend/src/api/types.ts` v0.
 
-## 8. Ответ на статус Frontend №1 (28.10.2026)
+## 8. Ответ на статус Frontend №1 (28.10.2026, обновлено под v0.3.1)
 
-Frontend №1 сообщил: «DeepSeek не подключён — в контракте v0.3 нет intent/preview», «вопросы показываются текстом, потому что схемы вариантов от BE2 нет». Что это значит для нас:
+> **Корректировка.** Первая редакция этого раздела опиралась на `docs/api/v0.3/` из `dev/backend-1` и утверждала, что `intent/preview` и `410` в контракте отсутствуют. Это было верно для снимка v0.3, но не для актуальной ветки Backend №1 `feat/be1-v03-main-integration` @ `364ccf4`, где выпущен v0.3.1: добавлен `POST /intent/preview`, `GET /trips/{id}` отдаёт `410 TRIP_EXPIRED`, cookie настраивается через `GOGLOBE_COOKIE_SAMESITE` (`none` включает `Secure`). Контракт и этот документ обновлены.
 
 | Вопрос Frontend №1 | Ответ Backend №2 |
 |---|---|
-| Нет `intent`/`preview` | Отдельный preview не нужен: `POST /searches` уже принимает `query` и после `202` отдаёт `needs_clarification` + `Question` либо `processing`. Если preview нужен до создания задачи — это **новый** эндпоинт, только по согласованию с Backend №1 |
-| Нет схемы вариантов ответа на вопрос | `Question.field` (`destination`/`duration_days`/`conflict`) уже есть в v0.3 и позволяет отрисовать подсказку. `options` — предложение (§4), не менять контракт без согласования |
-| CORS/cookie Vercel↔API | Зона Backend №1 (B2). Агент не участвует в CORS и не читает cookie |
-| 401/409/410 | Зона Backend №1 (B2). Агент возвращает только `state/result_status`; HTTP-коды ставит хост |
+| Нет `intent`/`preview` | **Есть в v0.3.1**: `POST /intent/preview` → `preview_id` (`ip_…`), `parsed`, до 3 вопросов (`kind`: text/number/travelers/money, `options`, `required`), `warnings`, `analysis_mode: llm/fallback`. Preview не создаёт Search/Trip. Адаптер BE2 собирает этот ответ: `preview_from()` в [`backend/app/agent/v03.py`](../backend/app/agent/v03.py) |
+| Нет схемы вариантов ответа на вопрос | В preview-вопросах `options` есть (до 20), `kind` задаёт тип ввода. В `Question` (уточнение в Snapshot) вариантов нет — только `field` + текст, это нормально: preview нужен до поиска, `Question` — после |
+| CORS/cookie Vercel↔API | У Backend №1: `GOGLOBE_COOKIE_SAMESITE=none` + `Secure` в `render.yaml`. Прокси на Vercel (`/api/v1/*`) остаётся альтернативой без изменения backend |
+| 401/409/410 | `409` и `410 TRIP_EXPIRED` реализованы в BE1 (`bff.py`: `ApiError(410, "TRIP_EXPIRED", …)`, tombstone 30 дней). Зона Backend №1, не агента |
 | История/♥/«Отели» на localStorage | Зона Frontend, к AI-агенту отношения не имеет |
 
-**Что это меняет для Backend №2:** ничего в коде до согласования. После фиксации `AgentRunRequest/AgentRunResult` (B1, B6) агент сможет отдавать `Question` и `Warning` в формате v0.3, и фронту не придётся показывать вопросы «голым текстом».
+**Что это меняет для Backend №2:** добавлен `preview_from()` и модели `IntentPreview*` по схеме v0.3.1, тесты сверяют их с OpenAPI. HTTP-слой preview — зона Backend №1.
+

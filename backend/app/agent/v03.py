@@ -1,4 +1,4 @@
-﻿"""Адаптер AI-агента к контракту API v0.3 (Backend №2).
+"""Адаптер AI-агента к контракту API v0.3 (Backend №2).
 
 Назначение: отдать Backend №1 результат работы агента в терминах v0.3
 (`Snapshot`, `Components`, `Price`, `Question`, `Warning`), не меняя общий
@@ -303,6 +303,108 @@ class SnapshotV03(StrictModel):
     expires_at: str
     requested_components: list[Literal["itinerary", "hotels", "flights"]] = Field(
         min_length=1, max_length=3
+    )
+
+
+# ---------------------------------------------------------------------------
+# Intent preview (v0.3.1): разбор запроса и вопросы без создания Search/Trip
+# ---------------------------------------------------------------------------
+
+
+class IntentPreviewRequestV03(StrictModel):
+    query: str = Field(min_length=1, max_length=2000)
+    params: ParamsV03 | None = None
+
+
+class IntentPreviewQuestionV03(StrictModel):
+    id: str = Field(min_length=1, max_length=100)
+    field: str = Field(min_length=1, max_length=100)
+    kind: Literal["text", "number", "travelers", "money"]
+    title: str = Field(min_length=1, max_length=300)
+    required: bool
+    options: list[object] = Field(default_factory=list, max_length=20)
+
+
+class IntentPreviewResponseV03(StrictModel):
+    preview_id: str = Field(pattern=r"^ip_", max_length=128)
+    parsed: ParamsV03
+    questions: list[IntentPreviewQuestionV03] = Field(default_factory=list, max_length=3)
+    warnings: list[WarningV03] = Field(default_factory=list, max_length=30)
+    analysis_mode: Literal["llm", "fallback"]
+
+
+def _question(
+    field: str, title: str, kind: str = "text", required: bool = True
+) -> IntentPreviewQuestionV03:
+    digest = hashlib.sha1(f"{field}:{title}".encode()).hexdigest()[:10]
+    return IntentPreviewQuestionV03(
+        id=f"q_{digest}",
+        field=field,
+        kind=kind,  # type: ignore[arg-type]
+        title=title[:300],
+        required=required,
+        options=[],
+    )
+
+
+def _preview_questions(result: SearchResponse) -> list[IntentPreviewQuestionV03]:
+    """До трёх вопросов: сначала тот, что сформулировал агент, затем недостающее."""
+    parsed = result.parsed
+    questions: list[IntentPreviewQuestionV03] = []
+
+    clarification = question_from(result)
+    if clarification is not None:
+        kind = "text"
+        questions.append(_question(clarification.field, clarification.message, kind, required=True))
+
+    fields = {q.field for q in questions}
+    if parsed.destination is None and "destination" not in fields:
+        questions.append(
+            _question(
+                "destination",
+                f"Куда едете? Доступные направления: {_SUPPORTED_HINT}",
+                required=True,
+            )
+        )
+    if parsed.dates is None and parsed.duration_days is None and "duration_days" not in fields:
+        questions.append(
+            _question(
+                "duration_days",
+                "На какие даты или сколько дней планируете поездку?",
+                required=True,
+            )
+        )
+    if parsed.travelers is None and "travelers" not in fields:
+        questions.append(
+            _question("travelers", "Сколько человек едет?", kind="travelers", required=False)
+        )
+
+    return questions[:3]
+
+
+_SUPPORTED_HINT = "Турция, Египет, ОАЭ, Таиланд, Мальдивы, Сочи, Италия, Греция, Испания, Кипр"
+
+
+def preview_from(
+    result: SearchResponse,
+    *,
+    query: str,
+    used_llm: bool = False,
+    preview_id: str | None = None,
+) -> IntentPreviewResponseV03:
+    """SearchResponse агента → IntentPreviewResponse v0.3.1.
+
+    Preview ничего не создаёт: `preview_id` не передаётся в PlanRequest,
+    а итоговый запрос повторно валидируется при POST /searches.
+    """
+    parsed = params_from_parsed(result.parsed)
+    digest = hashlib.sha1(f"{query}:{parsed.model_dump_json()}".encode()).hexdigest()[:16]
+    return IntentPreviewResponseV03(
+        preview_id=preview_id or f"ip_{digest}",
+        parsed=parsed,
+        questions=_preview_questions(result),
+        warnings=warnings_from(result, None),
+        analysis_mode="llm" if used_llm else "fallback",
     )
 
 
@@ -715,6 +817,9 @@ __all__ = [
     "ErrorV03",
     "HotelListV03",
     "HotelOfferV03",
+    "IntentPreviewQuestionV03",
+    "IntentPreviewRequestV03",
+    "IntentPreviewResponseV03",
     "ItemV03",
     "MoneyV03",
     "ParamsV03",
@@ -728,9 +833,9 @@ __all__ = [
     "WarningV03",
     "params_from_parsed",
     "parsed_from_params",
+    "preview_from",
     "question_from",
     "snapshot_from",
     "warning_code",
     "warnings_from",
 ]
-
