@@ -109,3 +109,6 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 .fl-screen .page-header::before { display: none; }
 /* Перелёты: подсказка стоит в шапке по центру между «назад» и «Фильтры» */
 .fl-screen .page-header__title { font-size: 14px; font-weight: 500; line-height: 1.25; color: var(--c-muted); text-wrap: balance; }
+
+/* Тёмная тема: выпадающие списки городов и меню — сплошные, не стеклянные */
+:root[data-theme="dark"] .city-menu, :root[data-theme="dark"] .hmenu__list { background: #15223b !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; box-shadow: 0 16px 36px -10px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .1); }
