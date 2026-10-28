@@ -21,7 +21,7 @@ from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from starlette.exceptions import HTTPException
 
 from app.contracts import examples, specification, validate
-from app.config import env_bool, env_float, env_origins
+from app.config import env_bool, env_choice, env_float, env_origins
 from app.database import Database, put
 from app.integrations.ports import FlightCriteria, HotelCriteria
 from app.integrations.service import IntegrationTools
@@ -100,6 +100,9 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         "https://goglobe-demo.vercel.app,http://localhost:3000,http://localhost:5173,http://localhost:8000,http://127.0.0.1:8000",
     )
     enable_docs = env_bool("GOGLOBE_ENABLE_DOCS", "false")
+    cookie_samesite = env_choice(
+        "GOGLOBE_COOKIE_SAMESITE", "lax", {"lax", "strict", "none"},
+    )
     planning = PlanningService(agent, tools)
     configured_db_path = db_path if db_path is not None else os.getenv(
         "GOGLOBE_DB_PATH", "data/goglobe.sqlite3"
@@ -169,9 +172,13 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         )
         return await api_error(request, ApiError(503 if busy else 500, "STORAGE_BUSY" if busy else "STORAGE_ERROR", "Хранилище временно недоступно"))
 
-    def get_object(db, kind, object_id, owner):
+    def get_object(db, kind, object_id, owner, *, report_trip_expiry=False):
         row = db.execute("SELECT * FROM objects WHERE kind=? AND id=? AND owner=?", (kind, object_id, owner)).fetchone()
-        if row is None or (row["expires"] is not None and row["expires"] <= stamp(now())):
+        if row is None:
+            raise ApiError(404, "NOT_FOUND", "Ресурс не найден")
+        if row["expires"] is not None and row["expires"] <= stamp(now()):
+            if kind == "trip" and report_trip_expiry:
+                raise ApiError(410, "TRIP_EXPIRED", "Срок хранения поездки истёк")
             raise ApiError(404, "NOT_FOUND", "Ресурс не найден")
         return json.loads(row["payload"])
 
@@ -187,7 +194,14 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         db.execute("DELETE FROM operation_claims WHERE expires<=?", (threshold,))
         db.execute("DELETE FROM search_inputs WHERE expires<=?", (threshold,))
         db.execute("DELETE FROM quote_inputs WHERE expires<=?", (threshold,))
-        db.execute("DELETE FROM objects WHERE expires IS NOT NULL AND expires<=?", (threshold,))
+        # Trip хранится как короткий tombstone, чтобы клиент мог отличить
+        # истечение срока (410) от неизвестного или чужого id (404).
+        trip_tombstone_cutoff = stamp(now() - timedelta(days=30))
+        db.execute(
+            "DELETE FROM objects WHERE expires IS NOT NULL AND expires<=? "
+            "AND (kind!='trip' OR expires<=?)",
+            (threshold, trip_tombstone_cutoff),
+        )
         db.execute(
             "DELETE FROM search_runs WHERE NOT EXISTS ("
             "SELECT 1 FROM objects o WHERE o.kind='search' AND o.id=search_runs.search_id)"
@@ -629,12 +643,20 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                     db.execute("INSERT INTO owners VALUES(?)", (owner,))
                 db.execute("INSERT INTO sessions VALUES(?,?,?) ON CONFLICT(token_hash) DO UPDATE SET expires=excluded.expires", (digest(token), owner, expiry))
                 response = success("Session", {"expires_at": expiry, "recovery_enabled": False})
-                response.set_cookie("gg_session", token, max_age=90 * 86400, httponly=True, secure=request.url.scheme == "https", samesite="lax", path="/")
+                response.set_cookie(
+                    "gg_session", token, max_age=90 * 86400, httponly=True,
+                    secure=request.url.scheme == "https" or cookie_samesite == "none",
+                    samesite=cookie_samesite, path="/",
+                )
                 return response
             if operation_id == "delete_session":
                 db.execute("DELETE FROM sessions WHERE token_hash=?", (digest(request.cookies.get("gg_session", "")),))
                 response = Response(status_code=204)
-                response.delete_cookie("gg_session", path="/", httponly=True, samesite="lax", secure=request.url.scheme == "https")
+                response.delete_cookie(
+                    "gg_session", path="/", httponly=True,
+                    samesite=cookie_samesite,
+                    secure=request.url.scheme == "https" or cookie_samesite == "none",
+                )
                 return response
             if operation_id not in IMPLEMENTED:
                 raise ApiError(501, "NOT_IMPLEMENTED", "Операция зарегистрирована как каркас. Бизнес-логика ещё не реализована.")
@@ -778,7 +800,10 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                     "sources": [],
                 })
             try:
-                trip = get_object(db, "trip", request.path_params["trip_id"], owner)
+                trip = get_object(
+                    db, "trip", request.path_params["trip_id"], owner,
+                    report_trip_expiry=operation_id == "get_trips_trip_id",
+                )
             except ApiError as exc:
                 if operation_id in {"delete_trips_trip_id_saved", "delete_favorites_trip_id"} and exc.status == 404:
                     return Response(status_code=204)
@@ -1496,6 +1521,12 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                     operation["responses"]["501"] = {"description": "Каркас: бизнес-логика не реализована", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}}
                     operation["summary"] = "[ЗАГЛУШКА] " + operation.get("summary", operation["operationId"])
                 operation["x-implementation-status"] = "demo" if operation["operationId"] in IMPLEMENTED else "scaffold"
+        schema["paths"]["/trips/{trip_id}"]["get"]["responses"]["410"] = {
+            "description": "Срок хранения поездки истёк.",
+            "content": {"application/json": {"schema": {
+                "$ref": "#/components/schemas/ErrorResponse",
+            }}},
+        }
         return schema
     app.openapi = openapi
 

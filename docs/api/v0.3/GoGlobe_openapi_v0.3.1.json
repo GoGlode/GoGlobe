@@ -3584,6 +3584,16 @@
                 }
               }
             }
+          },
+          "410": {
+            "description": "Срок хранения поездки истёк.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "description": "Ответы и бизнес-условия определены в PDF v0.3. Код 202 содержит исходный ответ приёма, а не текущее состояние worker.",

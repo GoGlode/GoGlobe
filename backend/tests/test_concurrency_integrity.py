@@ -187,7 +187,8 @@ def test_session_creation_physically_purges_expired_private_rows(tmp_path):
             db.execute("UPDATE search_inputs SET expires=?", (expired,))
         assert client.post("/api/v1/session", json={}).status_code == 200
         with sqlite3.connect(path) as db:
-            assert db.execute("SELECT count(*) FROM objects").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM objects").fetchone()[0] == 1
+            assert db.execute("SELECT kind FROM objects").fetchone()[0] == "trip"
             assert db.execute("SELECT count(*) FROM idempotency").fetchone()[0] == 0
             assert db.execute("SELECT count(*) FROM search_inputs").fetchone()[0] == 0
             assert db.execute("SELECT count(*) FROM search_runs").fetchone()[0] == 0
@@ -563,7 +564,9 @@ def test_expired_session_and_objects_are_unavailable_everywhere(tmp_path):
                 trip_id,
                 accepted.json()["search_id"],
             ))
-        assert current.get(trip_url).status_code == 404
+        expired_trip = current.get(trip_url)
+        assert expired_trip.status_code == 410
+        assert expired_trip.json()["error"]["code"] == "TRIP_EXPIRED"
         assert current.get(search_url).status_code == 404
         assert current.get(search_url + "/events").status_code == 404
         assert current.get("/api/v1/trips").json()["items"] == []

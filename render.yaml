@@ -11,5 +11,7 @@ services:
         value: https://goglobe-demo.vercel.app
       - key: GOGLOBE_DB_PATH
         value: /tmp/goglobe.sqlite3
+      - key: GOGLOBE_COOKIE_SAMESITE
+        value: none
       - key: GOGLOBE_PROVIDERS
         value: snapshot

@@ -34,6 +34,7 @@ GOGLOBE_SETTINGS = {
     "GOGLOBE_DB_PATH",
     "GOGLOBE_AGENT_TIMEOUT_SECONDS",
     "GOGLOBE_ENABLE_DOCS",
+    "GOGLOBE_COOKIE_SAMESITE",
     "GOGLOBE_CORS_ORIGINS",
     "GOGLOBE_PROVIDERS",
     "GOGLOBE_CACHE_TTL_SECONDS",
@@ -161,6 +162,9 @@ INVALID_MAIN_SETTINGS = [
     (name, value)
     for name in ("GOGLOBE_ENABLE_DOCS", "GOGLOBE_DEMO_FALLBACK")
     for value in ("", "1", "yes", "on", " true")
+] + [
+    ("GOGLOBE_COOKIE_SAMESITE", value)
+    for value in ("", "Lax", "NONE", "invalid", " none")
 ]
 
 
@@ -229,6 +233,9 @@ print(json.dumps({
         {"GOGLOBE_PROVIDERS": "snapshot"},
         {"GOGLOBE_ENABLE_DOCS": "TRUE"},
         {"GOGLOBE_ENABLE_DOCS": "False"},
+        {"GOGLOBE_COOKIE_SAMESITE": "lax"},
+        {"GOGLOBE_COOKIE_SAMESITE": "strict"},
+        {"GOGLOBE_COOKIE_SAMESITE": "none"},
         {"GOGLOBE_DEMO_FALLBACK": "TRUE"},
         {"GOGLOBE_DEMO_FALLBACK": "False"},
     ]
@@ -248,6 +255,7 @@ def test_env_example_matches_actual_main_defaults(tmp_path, monkeypatch):
         "GOGLOBE_DB_PATH": "data/goglobe.sqlite3",
         "GOGLOBE_AGENT_TIMEOUT_SECONDS": "20",
         "GOGLOBE_ENABLE_DOCS": "false",
+        "GOGLOBE_COOKIE_SAMESITE": "lax",
         "GOGLOBE_PROVIDERS": "snapshot",
         "GOGLOBE_CACHE_TTL_SECONDS": "60",
         "GOGLOBE_PROVIDER_TIMEOUT_SECONDS": "8",

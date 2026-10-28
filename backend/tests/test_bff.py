@@ -115,6 +115,17 @@ def test_search_cors_preflight_allows_configured_origin_and_denies_unknown(clien
     assert "access-control-allow-origin" not in denied.headers
 
 
+def test_cross_site_cookie_mode_is_none_and_secure(tmp_path, monkeypatch):
+    monkeypatch.setenv("GOGLOBE_COOKIE_SAMESITE", "none")
+    with TestClient(create_app(str(tmp_path / "cookie.sqlite3")),
+                    headers={"Origin": ORIGIN}) as isolated:
+        response = isolated.post("/api/v1/session", json={})
+    cookie = response.headers["set-cookie"].lower()
+    assert "samesite=none" in cookie
+    assert "secure" in cookie
+    assert "httponly" in cookie
+
+
 def test_idempotency_and_ownership(client):
     login(client)
     key = str(uuid4())

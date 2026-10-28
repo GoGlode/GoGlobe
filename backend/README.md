@@ -84,11 +84,13 @@ Snapshot и `run_id`, а поставщиков вызывает в фоне. Qu
 
 SQLite: `data/goglobe.sqlite3`, переменная `GOGLOBE_DB_PATH`. Файл не попадает в Git или Docker-образ. Приём задачи и исходного Accepted, запись Trip и повторы защищены транзакцией. Сохранённая поездка переживает перезапуск.
 
-Сессия — 90 суток от POST session; Search/несохранённый Trip — 7 суток; saved Trip без TTL; идемпотентность searches — 24 часа. Истёкшие приватные строки физически очищаются при старте приложения и создании сессии.
+Сессия — 90 суток от POST session; Search/несохранённый Trip — 7 суток; saved Trip без TTL; идемпотентность searches — 24 часа. Истёкший Trip ещё 30 суток хранится как минимальный приватный tombstone, чтобы `GET /trips/{trip_id}` мог вернуть `410 TRIP_EXPIRED`; остальные истёкшие строки очищаются при старте приложения и создании сессии.
 
-Изменяющие запросы требуют Origin из allowlist. Cookie HttpOnly/SameSite=Lax,
-Secure при HTTPS. По умолчанию разрешён `https://goglobe-demo.vercel.app` и
-локальные origins; настройка `GOGLOBE_CORS_ORIGINS`.
+Изменяющие запросы требуют Origin из allowlist. Cookie всегда HttpOnly. По
+умолчанию используется `SameSite=Lax`; для раздельных HTTPS-доменов frontend и
+API задайте `GOGLOBE_COOKIE_SAMESITE=none` — тогда backend принудительно добавит
+`Secure`. По умолчанию разрешён `https://goglobe-demo.vercel.app` и локальные
+origins; настройка `GOGLOBE_CORS_ORIGINS`.
 
 Пример настроек: `.env.example`. Файл сам по себе не загружается: задайте переменные в PowerShell или установите python-dotenv и используйте --env-file. При неверной настройке процесс завершается до приёма HTTP-запросов; ошибка называет переменную, но не повторяет её значение.
 
@@ -98,6 +100,7 @@ Secure при HTTPS. По умолчанию разрешён `https://goglobe-d
 | `GOGLOBE_CORS_ORIGINS` | goglobe-demo.vercel.app и локальные origins | непустой список HTTP(S) origin без path/query/fragment/credentials |
 | `GOGLOBE_AGENT_TIMEOUT_SECONDS` | `20` | конечное число `> 0` и `<= 120`; общий срок планирования |
 | `GOGLOBE_ENABLE_DOCS` | `false` | только `true`/`false`, регистр не важен |
+| `GOGLOBE_COOKIE_SAMESITE` | `lax` | строго `lax`, `strict` или `none`; `none` всегда включает `Secure` |
 | `GOGLOBE_CACHE_TTL_SECONDS` | `60` | конечное число `>= 0`; `0` отключает локальный кэш |
 | `GOGLOBE_PROVIDER_TIMEOUT_SECONDS` | `8` | конечное число `> 0` и `<= 120`; срок одной попытки |
 | `GOGLOBE_PROVIDER_MAX_ATTEMPTS` | `3` | целое `1..3`, включая первую попытку |

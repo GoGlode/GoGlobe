@@ -74,8 +74,9 @@ production-провайдеры и деплой этим статусом не �
 2. Подключение подтверждённых production quote providers без скрытой demo/live
    подмены; текущий snapshot flow остаётся честным demo/fallback путём.
 3. Реальный browser E2E после миграции FE1 с v0 `/api/search` на cookie-сессию
-   и `/api/v1`. Для раздельных Vercel/Render-доменов нужен same-origin proxy;
-   `SameSite=Lax` намеренно не ослабляется ради непроверенной cross-site схемы.
+   и `/api/v1`. Render-конфигурация включает `SameSite=None; Secure` для
+   раздельных HTTPS-доменов; фактический staging URL всё ещё нужно проверить в
+   браузере после публикации сервиса.
 4. Согласование v0.3.1 с frontend/BE2 и, если нужен печатный комплект,
    отдельный PDF-addendum для intent preview.
 
