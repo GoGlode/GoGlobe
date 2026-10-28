@@ -60,10 +60,10 @@
 
 ## 4. Предлагаемый интерфейс агента для Backend №1
 
-Агент остаётся библиотекой в процессе Backend №1, без собственного HTTP:
+Агент остаётся библиотекой в процессе Backend №1, без собственного HTTP. Интерфейс ниже — предложение; **модели и маппинг уже реализованы** в [`backend/app/agent/v03.py`](../backend/app/agent/v03.py) и покрыты тестами (см. §6).
 
 ```python
-# backend/app/agent/service.py (предложение, не реализовано до согласования)
+# backend/app/agent/service.py (предложение; v03.py уже даёт модели и маппинг)
 @dataclass
 class AgentRunRequest:
     run_id: str                 # id попытки, не search_id
@@ -155,16 +155,24 @@ Frontend №1 сообщил: «вопросы показываются текс
 
 ## 6. Что уже готово к интеграции
 
-- Разбор запроса и уточняющие вопросы (`parser.py`) — переносится без изменений, нужен только маппинг `Question`.
+- **Адаптер v0.3** — [`backend/app/agent/v03.py`](../backend/app/agent/v03.py): модели `Snapshot`, `Components`, `HotelList`, `HotelOffer`, `Price`, `Question`, `Warning`, `Params`, `Accepted`; функции `params_from_parsed`, `parsed_from_params`, `snapshot_from`, `warnings_from`, `question_from`, `warning_code`.
+  - деньги переводятся в `amount_minor` (копейки), валюта — только RUB, сумма в USD/EUR пересчитывается, а не переименовывается;
+  - статусы `ok/partial/empty/needs_clarification/error` → `state` + `result_status`;
+  - `question_id` стабилен (хеш текста вопроса), `field` выводится из текста;
+  - предупреждения получают коды: `LLM_FALLBACK`, `NO_DIRECT_FLIGHTS`, `CURRENCY_CONVERTED`, `PROVIDER_PARTIAL`, `PROVIDERS_EMPTY`, `AVAILABILITY_UNKNOWN`, `EMPTY_RESULT`, `AGENT_WARNING`;
+  - `Price.status="estimated"` всегда с `note`, `source_ids`, `checked_at`; `quoted` без источника не выставляется;
+  - **`flights` всегда `blocked` с `missing_fields=["segments"]`** — в контракте провайдера нет сегментов (B3), выдумывать рейсы нельзя;
+  - `availability="unknown"`, потому что `Offer` не несёт подтверждённого наличия.
+- Разбор запроса и уточняющие вопросы (`parser.py`) — переносится без изменений.
 - План поиска и вызовы инструментов (`tools.py`) — стадии маппятся на v0.3 (§4).
 - Ограничения: строгий прямой рейс, валюта, бюджет (`orchestrator.py`, `validation.py`, `currency.py`).
 - Ранжирование и объяснения (`ranking.py`, `explain.py`) — остаются внутренними, наружу идут `Price.note`/`Warning`.
-- Тесты: 81 (54 базовых + 19 регрессионных P0 + 8 интеграционных сценариев чек-листа).
+- Тесты: **121** (81 основных + 40 тестов адаптера, включая сверку полей моделей со схемами OpenAPI v0.3).
 
 ## 7. Порядок интеграции (предложение)
 
 1. Backend №1 фиксирует `AgentRunRequest/AgentRunResult` и коды `Warning`.
-2. Backend №2 добавляет `service.py` (адаптер), не меняя `run_search` для v0.
+2. Backend №2 добавляет тонкий `service.py` поверх готового `v03.py` (сейчас есть модели и маппинг).
 3. Backend №1 подключает адаптер к `POST /searches` и Snapshot; v0 остаётся для демо до переключения фронта.
 4. Совместный прогон 8 сценариев из чек-листа на staging с реальными провайдерами.
 5. Только после этого — удаление v0-роутов и `frontend/src/api/types.ts` v0.

@@ -1,4 +1,4 @@
-﻿# Полный отчёт о работе: AI-агент GoGlobe (Backend №2)
+# Полный отчёт о работе: AI-агент GoGlobe (Backend №2)
 
 > **Подпись:** Backend №2 — AI-агент · ветка `dev/backend-2` · HEAD `2a86ef5` + правки 28.10.2026
 > **Дата:** 27 октября 2026 г. (обновлено 28 октября 2026 г., 21:10 MSK)
@@ -15,7 +15,7 @@
 | Ветка | **`dev/backend-2`** |
 | Базовая ветка | `origin/main` @ `2e839c3` |
 | HEAD ветки | `2a86ef5` + правки по дефектам F-01…F-24 и чек-листу P0/P1 (28.10.2026) |
-| Тесты | **81 / 81 passed** (`pytest`, ~1.2 с): 54 базовых + 19 регрессионных P0 + 8 интеграционных |
+| Тесты | **121 / 121 passed** (`pytest`, ~1.2 с): 54 базовых + 19 регрессионных P0 + 8 интеграционных |
 | Статический анализ | **`ruff check .` — All checks passed!** |
 | Локальное окружение прогона | Python 3.14.2, pydantic 2.14.1, fastapi 0.161.1, httpx 0.28.1 |
 | CI | Python 3.12, `ruff check .` + `pytest -q` |
@@ -27,7 +27,7 @@
 
 ## 1. Краткое резюме
 
-В ветке `dev/backend-2` реализован серверный AI-слой GoGlobe: разбор естественного запроса (эвристики + LLM с безопасным фолбэком), планировщик поиска, 6 инструментов агента, оркестратор полного цикла, валидация бюджета/дат, прозрачное ранжирование и объяснения, а также набор из 81 теста.
+В ветке `dev/backend-2` реализован серверный AI-слой GoGlobe: разбор естественного запроса (эвристики + LLM с безопасным фолбэком), планировщик поиска, 6 инструментов агента, оркестратор полного цикла, валидация бюджета/дат, прозрачное ранжирование и объяснения, а также набор из 121 теста.
 
 **Что сделано:**
 
@@ -36,11 +36,11 @@
 - **Оркестратор** — 6 шагов, 5 статусов ответа, изоляция сбоев провайдеров, топ-10 офферов, SSE-события.
 - **Конфигурация** — `LLM_*` и `GOGLOBE_LLM_*` через `AliasChoices`, флаг `USE_MOCK_AI`.
 - **Контракт** — служебное поле `ParsedQuery.warnings`, проброс предупреждений парсера.
-- **Тесты** — 81 тест: парсер, баг-регрессии, инструменты, планировщик, оркестратор, эталонные запросы, сквозной SSE/API, P0-регрессии и 8 интеграционных сценариев.
+- **Тесты** — 121 тест: парсер, баг-регрессии, инструменты, планировщик, оркестратор, эталонные запросы, сквозной SSE/API, P0-регрессии и 8 интеграционных сценариев.
 
 **Вердикт (27.10.2026):** функциональное ядро готово к демонстрации, но **не готово к произвольным запросам**. При прогоне на падения найдены **1 дефект P0, 5 дефектов P1, 7 дефектов P2 и 6 замечаний P3**.
 
-**Статус на 28.10.2026 (21:10 MSK):** все пункты чек-листа P0 (1–5) и P0-интеграция (6) закрыты по коду; 81 тест зелёный, `ruff` чист, падений нет. Пункт 8 (PR) подготовлен локально: ветка закоммичена, тело PR — в разделе 7.9; push/PR требует доступа к GitHub (в окружении нет `gh`, см. §9.4). Раздел 7.3 — исходная матрица дефектов (факт на `fb5e253`) и колонка «Статус»; раздел 7.8 — закрытие чек-листа P0; раздел 7.9 — прогон на падения и PR.
+**Статус на 28.10.2026 (21:40 MSK):** все пункты чек-листа P0 (1–5) и P0-интеграция (6) закрыты по коду, включая адаптер v0.3 (`backend/app/agent/v03.py`); 121 тест зелёный, `ruff` чист, падений нет. Пункт 8 (PR) подготовлен локально: ветка закоммичена, тело PR — в разделе 7.9; push/PR требует доступа к GitHub (в окружении нет `gh`, см. §9.4). Раздел 7.3 — исходная матрица дефектов (факт на `fb5e253`) и колонка «Статус»; раздел 7.8 — закрытие чек-листа P0; раздел 7.9 — прогон на падения и PR.
 
 ---
 
@@ -85,7 +85,7 @@
 | **25.10.2026** | **`fb5e253` — обогащение объяснений, строгие даты, конфигурация** |
 | 26.10.2026 | `BRANCH_AUDIT.md` — аудит ветки |
 | 27.10.2026 | Отчёт и первый прогон тестов на падения (34 теста) |
-| **28.10.2026** | **Закрыты F-01…F-24: прямые рейсы, валюты, погода, рейтинг, LLM-фолбэк, SSE; 81 тест; документ интеграции v0.3** |
+| **28.10.2026** | **Закрыты F-01…F-24: прямые рейсы, валюты, погода, рейтинг, LLM-фолбэк, SSE; 121 тест; адаптер и документ интеграции v0.3** |
 
 ### 3.2. Коммиты ветки
 
@@ -243,8 +243,9 @@ SSE-стадии: `parsing → flights → hotels → validating → ranking →
 | [`backend/tests/test_agent_modules.py`](backend/tests/test_agent_modules.py) | 30 | 586 | Парсер, баг-регрессии, LLM-фолбэк, инструменты, планировщик, оркестратор, эталонные запросы |
 | [`backend/tests/test_search_flow.py`](backend/tests/test_search_flow.py) | 4 | 44 | Сквозной демо-запрос, уточнение, «пусто», SSE + сохранённый результат |
 | [`backend/tests/test_regressions.py`](backend/tests/test_regressions.py) | 39 | 720 | Регрессии F-01…F-24: прямые рейсы, валюты, рейтинг, погода, LLM-фолбэк, SSE, лимиты |
-| [`backend/tests/test_integration_pipeline.py`](backend/tests/test_integration_pipeline.py) | 8 | 285 | 8 интеграционных сценариев чек-листа (п. 9) |
-| **Итого** | **81** | **1549** | |
+| [`backend/tests/test_integration_pipeline.py`](backend/tests/test_integration_pipeline.py) | 8 | 232 | 8 интеграционных сценариев чек-листа (п. 9) |
+| [`backend/tests/test_v03_adapter.py`](backend/tests/test_v03_adapter.py) | 40 | 351 | Адаптер v0.3: сверка моделей со схемами OpenAPI, деньги в копейках, статусы, вопросы, блок `flights` |
+| **Итого** | **121** | **1900** | |
 
 **Группы:**
 
@@ -331,7 +332,7 @@ uvicorn app.main:app --reload --port 8000
 ### 6.3. Результат прогона 28.10.2026 (21:10 MSK)
 
 ```text
-81 passed, 2 warnings in 1.22s
+121 passed, 2 warnings in 1.28s
 All checks passed!
 ```
 
@@ -539,12 +540,12 @@ foreach ($q in $cases) {
 | 3 | Неподтверждённые погода/сезонность | ✅ выполнено | `tools.py`: `is_reference=True`, `source="static_reference"`; `explain.py`: «(справочно)», «не прогноз»; в скоринге не участвует; 3 теста F-22 |
 | 4 | Корректность ранжирования | ✅ выполнено | `ranking.py`: нет `rating or 4.0`, score всегда `0..1`, нет баллов за неизвестные поля; тесты F-23 |
 | 5 | Обработка ошибок LLM | ✅ выполнено | `parser.py`: warning о фолбэке, в лог только тип ошибки, timeout 10 с, битый JSON → фолбэк; 6 тестов F-24 |
-| 6 | Подготовка к API v0.3 | ⚠️ частично: анализ и предложение готовы, адаптер не написан | [`docs/backend-2-v0.3-integration.md`](docs/backend-2-v0.3-integration.md): 12 различий, `AgentRunRequest/AgentRunResult`, маппинг стадий, 7 блокеров B1–B7. Код не менялся до согласования — как требовал чек-лист |
+| 6 | Подготовка к API v0.3 | ✅ выполнено: разбор + рабочий адаптер | [`backend/app/agent/v03.py`](backend/app/agent/v03.py): модели `Snapshot`/`Components`/`HotelList`/`Price`/`Question`/`Warning`, `params_from_parsed`, `parsed_from_params`, `snapshot_from`; 40 тестов, включая сверку полей моделей со схемами OpenAPI v0.3. Документ [`docs/backend-2-v0.3-integration.md`](docs/backend-2-v0.3-integration.md): 12 различий, интерфейс, 7 блокеров B1–B7. Общий контракт не менялся |
 | 7 | Разделение ответственности агент/провайдеры | ✅ выполнено | агент работает только через `app/integrations/base.py` (`FlightProvider`/`HotelProvider`); HTTP, сессии, кэш, провайдеры — `api/`, `cache/`, `integrations/` (Backend №1); границы зафиксированы в §2–3 документа v0.3 |
 | 8 | PR из `dev/backend-2` | ⚠️ подготовлен, не отправлен | ветка закоммичена локально; тело PR — §7.9. `gh` в окружении нет, push требует доступ к GitHub (см. §9.4) |
 | 9 | Интеграционные тесты | ✅ выполнено | `tests/test_integration_pipeline.py`: 8 сценариев ровно по списку чек-листа |
 
-**Итог: 7 из 9 пунктов закрыты полностью, 2 — частично по внешним причинам** (нет staging/контракта от Backend №1 и нет доступа к GitHub из окружения).
+**Итог: 8 из 9 пунктов закрыты полностью, 1 — частично по внешней причине** (push/PR: нет доступа к GitHub из окружения; см. §9.4).
 
 ### 7.9. Прогон на падения 28.10.2026 и PR
 
@@ -571,7 +572,7 @@ foreach ($q in $cases) {
 
 ```text
 $ .\.venv\Scripts\python.exe -m pytest -q
-81 passed, 2 warnings in 1.22s
+121 passed, 2 warnings in 1.28s
 
 $ .\.venv\Scripts\python.exe -m ruff check .
 All checks passed!
@@ -603,7 +604,7 @@ All checks passed!
 8. **Windows ACL** — `.pytest_cache` может быть недоступен в песочнице; на продукт не влияет.
 9. **Демо-курсы валют** — `RUB/USD/EUR` зафиксированы в `currency.py`; курс не биржевой, в ответе это помечено как «демо-курс». До реального адаптера курсов суммы в валютах — ориентировочные (`estimated`).
 10. **Справочная погода** — статическая база на 5 направлений, помечена `is_reference`; полноценный destination-провайдер — за Backend №1.
-11. **Адаптер v0.3 не написан** намеренно: контракт `AgentRunRequest/AgentRunResult` требует согласования (7 блокеров в `docs/backend-2-v0.3-integration.md`).
+11. **Адаптер v0.3 есть, но `flights` заблокирован**: `FlightOffer` требует сегменты (аэропорты, время), которых нет в `FlightProvider`; выдумывать их нельзя (блокер B3).
 12. **Рабочее дерево** — правки 28.10.2026 закоммичены локально; `BRANCH_AUDIT.md` отслеживается, папки `GoGlobe ненужный/` в репозитории нет (проверено `Get-ChildItem`).
 
 ---
@@ -617,12 +618,13 @@ All checks passed!
 - [x] Оркестратор: 6 шагов, SSE, 5 статусов.
 - [x] Валидация бюджета/доступности, ранжирование, объяснения.
 - [x] Конфигурация LLM с алиасами.
-- [x] **81 тест, `ruff` без замечаний** (28.10.2026).
+- [x] **121 тест, `ruff` без замечаний** (28.10.2026).
 - [x] Исправлены F-01…F-19 (P0/P1/P2/P3), кроме архитектурного F-11 (multi-worker).
 - [x] Исправлены P0 чек-листа 26.10: F-20…F-24 (прямые рейсы, валюты, погода, рейтинг, LLM-фолбэк).
 - [x] Добавлены регрессионные тесты (`tests/test_regressions.py`, 39 тестов).
 - [x] Добавлены 8 интеграционных тестов (`tests/test_integration_pipeline.py`).
 - [x] Подготовлен документ интеграции с v0.3 (`docs/backend-2-v0.3-integration.md`).
+- [x] Реализован адаптер v0.3: `backend/app/agent/v03.py`, 40 тестов, компонент `flights` честно `blocked` (у провайдера нет сегментов).
 - [x] Папка `GoGlobe ненужный/` в репозитории отсутствует (проверено).
 - [ ] PR в `main` и ревью Backend №1 — тело PR готово (§7.9), push требует доступа к GitHub.
 
@@ -632,7 +634,7 @@ All checks passed!
 2. ~~Закрыть F-02/F-03 валидацией схемы.~~ Готово.
 3. ~~Разделить `info`/`warnings` (F-04).~~ Готово: `ok` достижим.
 4. ~~Починить жизненный цикл SSE (F-05/F-06).~~ Готово.
-5. ~~Добавить регрессионные тесты.~~ Готово, 81 тест.
+5. ~~Добавить регрессионные тесты.~~ Готово, 121 тест.
 6. ~~Закрыть P0 чек-листа 26.10 (F-20…F-24).~~ Готово.
 7. ~~Сверить контракт v0.3 и подготовить интерфейс интеграции.~~ Готово, блокеры B1–B7.
 8. Дальше: push ветки и PR (§9.4), ревью Backend №1, staging-прогон 8 сценариев.
@@ -680,7 +682,9 @@ git push -u origin dev/backend-2
 | [`backend/tests/test_search_flow.py`](backend/tests/test_search_flow.py) | 47 | 4 сквозных теста | `fb5e253` |
 | [`backend/tests/test_regressions.py`](backend/tests/test_regressions.py) | 682 | **новый**: 39 регрессионных тестов F-01…F-24 | 28.10 |
 | [`backend/tests/test_integration_pipeline.py`](backend/tests/test_integration_pipeline.py) | 232 | **новый**: 8 интеграционных сценариев чек-листа | 28.10 |
-| [`docs/backend-2-v0.3-integration.md`](docs/backend-2-v0.3-integration.md) | 184 | **новый**: различия v0/v0.3, интерфейс, блокеры | 28.10 |
+| [`backend/app/agent/v03.py`](backend/app/agent/v03.py) | 736 | **новый**: адаптер и модели контракта v0.3 | 28.10 |
+| [`backend/tests/test_v03_adapter.py`](backend/tests/test_v03_adapter.py) | 351 | **новый**: 40 тестов адаптера v0.3 | 28.10 |
+| [`docs/backend-2-v0.3-integration.md`](docs/backend-2-v0.3-integration.md) | 192 | **новый**: различия v0/v0.3, интерфейс, блокеры | 28.10 |
 | [`docs/api/`](docs/api/README.md) | — | **новый в ветке**: комплект контракта v0.3 (из `origin/dev/backend-1`) | 28.10 |
 | [`.env.example`](.env.example) | 20 | Переменные LLM и SSE | `33d86a0` + 28.10 |
 
@@ -776,6 +780,22 @@ test_integration_pipeline.py (8) — сценарии чек-листа, п. 9
     6  test_hotel_provider_failure_yields_partial
     7  test_offer_structure_matches_frontend_contract
     8  test_sse_stages_follow_pipeline_order
+
+test_v03_adapter.py (40)
+    Контракт (20): test_model_fields_match_openapi[Money/Price/Source/Warning/Question/Answer/
+        Travelers/Place/Item/Day/Component/Components/HotelContext/Stay/HotelOffer/HotelList/
+        Params/Accepted/Error/Snapshot]
+    Параметры (3): test_params_from_parsed_uses_minor_units_and_enum_wishes,
+        test_params_roundtrip_keeps_agent_values, test_empty_params_do_not_invent_data
+    Предупреждения и вопросы (8): test_warning_codes[6], test_question_gets_stable_id_and_field,
+        test_destination_question_is_classified
+    Snapshot (7): test_completed_snapshot_has_itinerary_and_hotels_and_blocked_flights,
+        test_clarification_snapshot_carries_question,
+        test_hotels_offer_has_estimated_price_with_note_and_source,
+        test_snapshot_prices_are_minor_units_and_estimated, test_money_currency_is_rub_only,
+        test_snapshot_is_json_serializable, test_currency_warning_is_mapped_for_usd_budget
+    Инварианты цены (2): test_unknown_price_must_not_have_money,
+        test_estimated_price_requires_note
 ```
 
 ---
@@ -789,12 +809,15 @@ test_integration_pipeline.py (8) — сценарии чек-листа, п. 9
 HEAD:      2a86ef5 + правки 28.10.2026 (локальный коммит)
 Автор:     Leonard1L
 Дата:      28.10.2026, 21:10 MSK
-Статус:    81/81 тестов passed, 0 падений, ruff clean
+Статус:    121/121 тест passed, 0 падений, ruff clean
 Закрыто:   F-01…F-24; P0 чек-листа 26.10 — 5/5 по коду, 7/9 пунктов полностью
-Осталось:  push + PR (нет доступа к GitHub), адаптер v0.3 (после согласования)
+Осталось:  push + PR (нет доступа к GitHub), включение адаптера в HTTP v0.3 (зона Backend №1)
 ```
 
 **Подписано:** Backend №2 · `dev/backend-2` · 28.10.2026.
+
+
+
 
 
 
