@@ -20,11 +20,21 @@ make dev          # backend :8000, frontend :5173
 make test         # pytest + сборка фронта
 ```
 
-- Swagger backend: http://localhost:8000/docs
+- Проверка backend: http://localhost:8000/health
+- Swagger backend включается переменной `GOGLOBE_ENABLE_DOCS=true`, затем доступен по адресу http://localhost:8000/docs
 - Без `make`: `cd backend && uvicorn app.main:app --reload` и `cd frontend && npm run dev`
 - Docker: `docker compose up`
 
-Из коробки уже работает **сквозной сценарий на моках**: ввод запроса → статусы поиска (SSE) → карточки → страница деталей. Дальше команда заменяет моки реальными данными, не ломая контракт.
+Из коробки уже работает **сквозной сценарий v0.3.1 на snapshot-данных**:
+сессия → поиск → уточнение при необходимости → статусы SSE → поездка →
+сохранение → расписание → поиск предложений отелей и перелётов. Подробный запуск,
+настройки и ограничения описаны в [`backend/README.md`](backend/README.md), а
+матрица операций — в [`docs/integration/API_STATUS.md`](docs/integration/API_STATUS.md).
+
+Важно: текущий `frontend/src/api/client.ts` всё ещё использует ранний v0
+`/api/search`. По ТЗ файлы frontend принадлежат FE1 и в этой backend-ветке не
+изменялись; перед общим браузерным E2E FE1 должен переключить клиент на
+`/api/v1`, cookie-сессию и DTO v0.3.1.
 
 ## 2. Утверждённый стек
 
@@ -34,8 +44,8 @@ make test         # pytest + сборка фронта
 | Стили | CSS + дизайн-токены (`frontend/src/design/tokens.css`) | токены отдаёт дизайнер, без тяжёлых UI-кит |
 | Backend / BFF / агент | **Python 3.11+ + FastAPI + Pydantic v2** | async, SSE, типизированные схемы, лучшая экосистема для LLM |
 | Контракт API | Pydantic-схемы → OpenAPI (`/openapi.json`) + зеркало `frontend/src/api/types.ts` | единый источник правды |
-| Статусы поиска | **SSE** (`GET /api/search/{id}/events`) | проще WebSocket, достаточно для прогресса |
-| Кэш и хранилище | In-memory TTL (`backend/app/cache`) → при необходимости SQLite | на 8 дней хватает; интерфейс не меняется |
+| Статусы поиска | **SSE** (`GET /api/v1/searches/{id}/events`) | проще WebSocket, достаточно для прогресса |
+| Кэш и хранилище | SQLite + локальный TTL-кэш | сохраняет поездки между перезапусками; интерфейс не меняется |
 | LLM | провайдер выбирается Backend №2 (ключ — `LLM_API_KEY`), за интерфейсом парсера | уточнить у организаторов ограничения по моделям |
 | Тесты / линт | pytest, ruff, `tsc --noEmit` | запускаются в CI на каждый PR |
 | CI | GitHub Actions (`.github/workflows/ci.yml`) | |
@@ -89,16 +99,22 @@ docs/               # контракт, демо-сценарий, роадма�
 - Секреты **никогда** не коммитим: только `.env` (в `.gitignore`), шаблон — `.env.example`.
 - Владельцы файлов — `.github/CODEOWNERS` (заполнить GitHub-логинами).
 
-## 6. API-контракт v0
+## 6. API-контракт v0.3.1
 
-Единственный способ общения frontend ↔ backend. Подробности: [`docs/api-contract.md`](docs/api-contract.md).
+Рабочий контракт Backend №1 опубликован в
+[`docs/api/v0.3/GoGlobe_openapi_v0.3.json`](docs/api/v0.3/GoGlobe_openapi_v0.3.json); аддитивное расширение
+с Intent Preview находится в
+[`docs/api/v0.3/GoGlobe_openapi_v0.3.1.json`](docs/api/v0.3/GoGlobe_openapi_v0.3.1.json).
+Актуальная реализация использует префикс `/api/v1`; документ
+[`docs/api-contract.md`](docs/api-contract.md) сохранён как описание раннего
+прототипа и не является контрактом основной точки входа.
 
-- `POST /api/search` — `{ query, params?, search_id? }` → `{ search_id, status, parsed, clarifying_question, offers[], warnings[] }`
-- `GET /api/search/{id}/events` — SSE `{ stage, message }`, стадии: `parsing → flights → hotels → validating → ranking → done`
-- `GET /api/search/{id}` — сохранённый результат
-- `status`: `ok | needs_clarification | partial | empty | error` — дизайнер рисует все пять состояний.
-- Правило: **контракт меняется только через общий чат + PR с меткой `contract`**, который правит `schemas/search.py`, `api/types.ts` и `docs/api-contract.md` вместе.
-- Отличие от PDF-черновика: `search_id` может прислать клиент, чтобы открыть SSE *до* завершения POST.
+- `POST /api/v1/session` — создаёт сессию владельца.
+- `POST /api/v1/intent/preview` — безопасно разбирает свободный запрос до сохранения.
+- `POST /api/v1/searches` — создаёт или продолжает поиск с идемпотентностью.
+- `GET /api/v1/searches/{id}` и `/events` — Snapshot и SSE-события.
+- `GET /api/v1/trips/{id}` — поездка; saved/schedule меняются отдельными операциями.
+- Полный перечень реализованных и отложенных операций: [`docs/integration/API_STATUS.md`](docs/integration/API_STATUS.md).
 
 ## 7. Принципы разработки (из архитектуры)
 

@@ -1,0 +1,44 @@
+{
+  "intent_preview_request": {
+    "schema": "IntentPreviewRequest",
+    "value": {
+      "query": "Хочу в Рим на 3 дня, музеи и уютные кафе",
+      "params": {}
+    }
+  },
+  "intent_preview_fallback": {
+    "schema": "IntentPreviewResponse",
+    "value": {
+      "preview_id": "ip_example",
+      "parsed": {
+        "destination": "Рим",
+        "duration_days": 3,
+        "dates": null,
+        "origin": null,
+        "travelers": null,
+        "budget": null,
+        "wishes": []
+      },
+      "questions": [
+        {
+          "id": "q_travelers",
+          "field": "travelers",
+          "kind": "travelers",
+          "title": "Кто едет?",
+          "required": false,
+          "options": []
+        },
+        {
+          "id": "q_origin",
+          "field": "origin",
+          "kind": "text",
+          "title": "Откуда вылетать?",
+          "required": false,
+          "options": []
+        }
+      ],
+      "warnings": [],
+      "analysis_mode": "fallback"
+    }
+  }
+}

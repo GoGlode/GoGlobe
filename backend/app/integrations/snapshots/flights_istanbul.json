@@ -1,0 +1,18 @@
+{
+  "kind": "flights",
+  "source": "goglobe-demo/flights-mow-istanbul",
+  "fetched_at": "2026-10-20T09:05:00Z",
+  "context": {"destination": "Стамбул", "origin": "Москва", "flight_dates": {"outbound_date": "2026-12-03", "return_date": "2026-12-07"}, "travelers": {"adults": 2, "children_ages": [8]}},
+  "result": {
+    "status": "ok", "data_mode": "demo",
+    "items": [{
+      "offer_id": "f_demo_istanbul",
+      "outbound_segments": [{"origin": {"code": "MOW", "timezone": "Europe/Moscow"}, "destination": {"code": "IST", "timezone": "Europe/Istanbul"}, "departure_at": "2026-12-03T06:00:00Z", "arrival_at": "2026-12-03T09:30:00Z", "duration_minutes": 210}],
+      "inbound_segments": [{"origin": {"code": "IST", "timezone": "Europe/Istanbul"}, "destination": {"code": "MOW", "timezone": "Europe/Moscow"}, "departure_at": "2026-12-07T14:00:00Z", "arrival_at": "2026-12-07T17:30:00Z", "duration_minutes": 210}],
+      "total_price": {"status": "quoted", "money": {"amount_minor": 7200000, "currency": "RUB"}, "basis": "party_return_total", "coverage": ["flights"], "exclusions": ["hotels", "activities", "transfers"], "source_ids": ["src_f_istanbul"], "checked_at": "2026-10-20T09:05:00Z", "valid_until": "2026-10-20T09:20:00Z", "stale": false, "note": null},
+      "booking_url": "https://example.com/flight/istanbul", "availability": "available", "source_ids": ["src_f_istanbul"]
+    }],
+    "sources": [{"source_id": "src_f_istanbul", "name": "Demo MOW-IST flight feed", "url": "https://example.com", "checked_at": "2026-10-20T09:05:00Z", "kind": "provider"}],
+    "warnings": [{"code": "DEMO_DATA", "message": "Демонстрационные данные перелёта, бронирование недоступно.", "trip_id": null}]
+  }
+}

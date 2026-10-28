@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: goglobe-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: GOGLOBE_CORS_ORIGINS
+        value: https://goglobe-demo.vercel.app
+      - key: GOGLOBE_DB_PATH
+        value: /tmp/goglobe.sqlite3
+      - key: GOGLOBE_PROVIDERS
+        value: snapshot

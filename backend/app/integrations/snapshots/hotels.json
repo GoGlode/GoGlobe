@@ -1,0 +1,31 @@
+{
+  "kind": "hotels",
+  "source": "goglobe-demo/hotels-rome",
+  "fetched_at": "2026-10-20T09:00:00Z",
+  "context": {
+    "destination": "Рим",
+    "stay": {"check_in": "2026-11-10", "check_out": "2026-11-11"},
+    "travelers": {"adults": 2, "children_ages": []}
+  },
+  "result": {
+    "status": "ok",
+    "data_mode": "demo",
+    "items": [{
+      "offer_id": "h_demo_1",
+      "name": "Hotel Artemide Roma",
+      "photos": [],
+      "place": null,
+      "stars": 4,
+      "rating": 8.6,
+      "check_in": "2026-11-10",
+      "check_out": "2026-11-11",
+      "total_price": {"status": "quoted", "money": {"amount_minor": 1500000, "currency": "RUB"}, "basis": "party_stay_total", "coverage": ["hotels"], "exclusions": ["flights", "activities", "transfers"], "source_ids": ["src_demo_hotel"], "checked_at": "2026-10-20T09:00:00Z", "valid_until": "2026-10-20T09:15:00Z", "stale": false, "note": null},
+      "nightly_price": {"status": "quoted", "money": {"amount_minor": 1500000, "currency": "RUB"}, "basis": "room_night", "coverage": ["hotels"], "exclusions": ["flights", "activities", "transfers"], "source_ids": ["src_demo_hotel"], "checked_at": "2026-10-20T09:00:00Z", "valid_until": "2026-10-20T09:15:00Z", "stale": false, "note": null},
+      "booking_url": "https://example.com/hotel",
+      "availability": "available",
+      "source_ids": ["src_demo_hotel"]
+    }],
+    "sources": [{"source_id": "src_demo_hotel", "name": "Demo Rome hotel feed", "url": "https://example.com", "checked_at": "2026-10-20T09:00:00Z", "kind": "provider"}],
+    "warnings": [{"code": "DEMO_DATA", "message": "Демонстрационные данные отеля, бронирование недоступно.", "trip_id": null}]
+  }
+}

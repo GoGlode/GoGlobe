@@ -18,3 +18,14 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# backend runtime/build artifacts
+backend/data/
+backend/.build/
+backend/build/
+backend/output/
+backend/.audit-dist/
+backend/tmp/
+*.sqlite
+*.sqlite3
+*.db
