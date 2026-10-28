@@ -66,14 +66,19 @@ snapshot quote flow, но внешние production-провайдеры и де
 
 ## P0 gaps before acceptance
 
-1. Вынесенный durable worker/queue с отдельными `run_id` для безопасной работы
-   нескольких экземпляров. Текущий lifecycle, состояния уточнения, terminal
-   guards и атомарная запись Trip уже сохраняются в SQLite, но планировщик
-   выполняется внутри процесса API.
-2. Длительное ожидание новых revision и полноценная reconnect-модель SSE.
-   Текущий поток уже различает нетерминальный `snapshot` и терминальный
-   `finished`, а доступ проверяется до открытия ответа.
-3. Подключение подтверждённых production quote providers без скрытой demo/live
+1. Внешняя durable queue/worker для одновременной работы нескольких API-
+   экземпляров. Для текущего single-instance runtime уже сохраняются отдельные
+   `run_id`, queued/processing/terminal состояния и вход задачи; POST немедленно
+   возвращает `202`, cancel инвалидирует run, а незавершённый processing-run
+   возобновляется после рестарта с guarded terminal commit.
+2. Подключение подтверждённых production quote providers без скрытой demo/live
    подмены; текущий snapshot flow остаётся честным demo/fallback путём.
+3. Реальный browser E2E после миграции FE1 с v0 `/api/search` на cookie-сессию
+   и `/api/v1`. Для раздельных Vercel/Render-доменов нужен same-origin proxy;
+   `SameSite=Lax` намеренно не ослабляется ради непроверенной cross-site схемы.
 4. Согласование v0.3.1 с frontend/BE2 и, если нужен печатный комплект,
    отдельный PDF-addendum для intent preview.
+
+SSE single-instance runtime уже держит соединение до следующей revision,
+отдаёт `snapshot`, затем `update` и `finished`, закрывается на terminal и при
+reconnect сразу возвращает актуальный полный Snapshot.

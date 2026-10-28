@@ -14,22 +14,28 @@ Date: 2026-10-28 (Europe/Moscow)
   `needs_clarification` Snapshot instead of a terminal validation error.
 - Implemented clarification continuation with revision/question guards,
   idempotency and the same `trip_id`; implemented search cancellation.
-- SSE now returns `snapshot` for a non-terminal search and `finished` for a
-  terminal Snapshot.
+- Search acceptance now atomically persists draft Trip, queued Snapshot,
+  input and a separate `run_id` before returning `202`. Worker commits are
+  guarded by the active run; cancellation blocks late writes and pending runs
+  resume after an application restart.
+- SSE remains open across revisions and emits `snapshot`, `update` and terminal
+  `finished` frames containing the full Snapshot.
 - Connected the existing resilient provider layer and local snapshots to
   quote-search, HotelList and FlightList endpoints. Quote inputs are explicit,
   errors identify the missing field, results are persisted separately from the
   itinerary and demo offers do not claim live availability or booking URLs.
 - Made an exact schedule retry idempotent and aligned the default production
   frontend CORS allowlist with `.env.example`.
+- Added bounded quote-search claims so concurrent replay of one idempotency key
+  performs one provider run, streaming limits for Preview bodies, physical TTL
+  cleanup and deferred SQLite transactions for read-only requests.
 - Added canonical v0.3 JSON copies, additive v0.3.1 OpenAPI/examples, changelog
   and an implementation-status matrix.
 
 ## Verification evidence
 
-- Final full pytest regression from the monorepo `backend/` directory:
-  `447 passed, 1 warning in 83.67s`.
-- Focused critical-path regression: `17 passed`.
+- Final full pytest regression from the monorepo root:
+  `456 passed, 1 warning in 95.71s` (Starlette TestClient deprecation notice).
 - Ruff: clean.
 - `python -m compileall -q app`: clean.
 - `pip check`: no broken requirements.
@@ -56,8 +62,8 @@ Date: 2026-10-28 (Europe/Moscow)
   backend branch does not modify it; a real browser E2E requires FE1 to adopt
   the v0.3.1 session and `/api/v1` contract.
 - Planning remains an in-process adapter. It has persisted lifecycle states,
-  clarification guards and deadlines, but not a durable external queue/run
-  worker for multi-instance deployment.
+  run IDs, clarification guards, deadlines and restart recovery, but not an
+  external queue/lease system for multi-instance deployment.
 - Intent preview currently uses the required safe fallback path; no DeepSeek
   key or agreed BE2 LLM response contract was available.
 - Twelve v0.3 P1/P2 operations remain explicit 501 scaffolds: recovery/restore,

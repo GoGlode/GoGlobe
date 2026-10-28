@@ -49,11 +49,13 @@ Set-Location -LiteralPath 'C:\Users\m1kor1\Documents\Goglobe mine\backend'
 origin, travelers и budget не мешает программе. Даты программы не подменяют
 stay и flight_dates.
 
-План строится и проверяется вне транзакции БД. Успешный результат атомарно
-сохраняет Trip, Snapshot и Accepted; состояние уточнения также хранится в
-SQLite. SSE отдаёт `snapshot` для нетерминального состояния и `finished` для
-завершённого. Полноценная внешняя очередь worker/run_id остаётся следующим
-этапом, но revision/question guards уже блокируют устаревшие ответы.
+Короткая транзакция атомарно сохраняет draft Trip, queued Snapshot, Accepted и
+отдельный `run_id`, после чего POST сразу возвращает `202`. План строится вне
+транзакции; terminal commit разрешён только активному run. Cancel блокирует
+позднюю запись, а queued/processing run возобновляется после рестарта процесса.
+SSE остаётся открытым и отдаёт полный Snapshot событиями `snapshot`, `update` и
+`finished`. Внешняя очередь с lease всё ещё нужна для нескольких экземпляров,
+но single-instance lifecycle хранится в SQLite.
 
 Маршрут создаётся с неизвестной ценой (`money: null`). Отдельный quote-search
 принимает явные stay/origin/travelers/flight_dates и возвращает сохранённые
@@ -131,8 +133,9 @@ Blueprint сам задаёт `GOGLOBE_DB_PATH=/tmp/goglobe.sqlite3` и
 `GOGLOBE_DB_PATH`; для бесплатного demo-режима используется путь в `/tmp`.
 Остальные настройки имеют проверенные значения по умолчанию из таблицы выше.
 
-Production-лимиты, полный worker/run_id/deadline, recovery и очистка находятся
-за рамками каркаса.
+Внешний multi-instance worker/lease, recovery-key и расширенные операции
+остаются за рамками каркаса. Просроченные session/object/idempotency/input строки
+физически очищаются при старте и создании сессии.
 
 ## Контракт и поставщики
 
