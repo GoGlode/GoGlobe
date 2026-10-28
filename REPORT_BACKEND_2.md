@@ -18,7 +18,7 @@
 | Тесты | **121 / 121 passed** (`pytest`, ~1.2 с): 54 базовых + 19 регрессионных P0 + 8 интеграционных |
 | Статический анализ | **`ruff check .` — All checks passed!** |
 | Локальное окружение прогона | Python 3.14.2, pydantic 2.14.1, fastapi 0.161.1, httpx 0.28.1 |
-| CI | Python 3.12, `ruff check .` + `pytest -q` |
+| CI | Python 3.12, `ruff check .` + `pytest -q`; PR #9 — backend ✅, frontend ✅ |
 | Дата отчёта | 27.10.2026, обновление — 28.10.2026 |
 
 **Связанные документы:** [`BRANCH_AUDIT.md`](BRANCH_AUDIT.md) (аудит ветки и варианты слияния, 26.10.2026), [`docs/api-contract.md`](docs/api-contract.md), [`docs/demo-scenario.md`](docs/demo-scenario.md), [`README.md`](README.md).
@@ -588,6 +588,7 @@ All checks passed!
 - **PR #9:** https://github.com/GoGlode/GoGlobe/pull/9 (state: open, 28.10.2026 21:50 MSK).
 - Заголовок: `feat(backend-2): AI search agent — P0 fixes, API v0.3 adapter, 121 tests`.
 - Тело PR: сводка §1, чек-лист §7.8, результаты тестов §7.9, документ интеграции `docs/backend-2-v0.3-integration.md`, ограничения §8.
+- CI по PR #9 (GitHub Actions): backend — success, frontend — success.
 - Не сливать в `main` до ревью Backend №1 (требование чек-листа).
 
 ---
@@ -810,6 +811,7 @@ HEAD:      2a86ef5 + правки 28.10.2026 (локальный коммит)
 ```
 
 **Подписано:** Backend №2 · `dev/backend-2` · 28.10.2026.
+
 
 
 
