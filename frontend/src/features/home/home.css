@@ -189,3 +189,19 @@
 :root[data-theme="dark"] .quiz__sheet { background: color-mix(in srgb, #0e182c 94%, transparent); box-shadow: inset 0 .5px 0 rgba(255, 255, 255, .15); }
 :root[data-theme="dark"] .quiz__card, :root[data-theme="dark"] .quiz__dates input { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09); }
 :root[data-theme="dark"] .quiz__bars i { background: rgba(255, 255, 255, .14); }
+
+/* Викторина v0.3: заметка, форма «Как я понял запрос» */
+.quiz__note { margin: 10px 0 0; padding: 10px 12px; border-radius: 14px; background: var(--c-chip); font-size: 13.5px; }
+.quiz__review { display: grid; gap: 10px; margin-top: 12px; }
+.quiz__review label, .quiz__dates label { display: grid; gap: 4px; font-size: 13px; color: var(--c-muted); }
+.quiz__review input, .quiz__dates input { height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--c-line); background: var(--c-surface, #fff); color: var(--c-text); font: inherit; font-size: 16px; min-width: 0; }
+.quiz__review input:focus-visible, .quiz__dates input:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.quiz__orig { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--c-chip); font-size: 14px; overflow-wrap: anywhere; }
+.quiz__wishes { display: flex; flex-wrap: wrap; gap: 8px; }
+.atrip__link { background: none; border: 0; color: var(--c-link); font: inherit; font-size: 13px; text-align: left; padding: 4px 0; cursor: pointer; }
+.home__demo { margin: 0; font-size: 12.5px; color: var(--c-muted); text-align: center; }
+
+/* Тёмная тема: при фокусе фон поля не светлеет — иначе светлый текст сливается с ним */
+:root[data-theme="dark"] .home__input { background: rgba(20, 32, 56, .72); }
+:root[data-theme="dark"] .home__input:focus-within { background: rgba(24, 38, 66, .92); }
+:root[data-theme="dark"] .home__input textarea { color: #f1f5ff; caret-color: #6cb4ff; }

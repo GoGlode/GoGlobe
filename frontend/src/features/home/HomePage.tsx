@@ -1,7 +1,8 @@
 // Главный экран: «Куда поедем?», запрос, параметры, популярные направления. Владелец: Frontend №1.
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { dateRange, money, plural } from "../../data/format";
+import { money } from "../../data/format";
+import { uiFromPlan } from "../../data/plan";
 import { DESTINATIONS, getTrip } from "../../data/trips";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
@@ -10,7 +11,7 @@ import QuizSheet from "./QuizSheet";
 import "./home.css";
 
 const BUDGETS = [100_000, 150_000, 250_000];
-const MAX_TRAVELERS = 9;
+const MAX_TRAVELERS = 9; // взрослых (контракт v0.3: 1–9)
 const today = () => new Date().toISOString().slice(0, 10);
 const rub = (amount: number) => money({ amount, currency: "RUB" });
 
@@ -31,7 +32,7 @@ const FACTS: Record<string, { season: string; stay: string }> = {
 type Panel = "dates" | "travelers" | "budget" | null;
 
 export default function HomePage() {
-  const { query, setQuery, params, setParams, run, phase } = useSearch();
+  const { query, setQuery, params, setParams, run, phase, busy, live, configError, submitError, clearSubmitError } = useSearch();
   const { has, toggle: toggleFav } = useFavorites();
   const nav = useNavigate();
   const input = useRef<HTMLTextAreaElement>(null);
@@ -47,7 +48,8 @@ export default function HomePage() {
   const datesError = from && from < today() ? "Дата начала уже прошла" : from && to && to < from ? "Обратно — раньше, чем туда" : null;
   const budgetValue = Number(budget.replace(/\s/g, ""));
   const togglePanel = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
-  const apply = (patch: Partial<typeof params>) => { setParams({ ...params, ...patch }); setPanel(null); };
+  const plan = params.plan ?? {};
+  const apply = (patch: NonNullable<typeof params.plan>) => { setParams(uiFromPlan({ ...plan, ...patch }, params)); setPanel(null); };
 
   // Поле растёт вместе с текстом, пока запрос короткий — выглядит как одна строка поиска
   useLayoutEffect(() => {
@@ -58,7 +60,8 @@ export default function HomePage() {
   }, [query]);
 
   const submit = () => {
-    if (phase === "loading") return;
+    if (phase === "loading" || busy) return;
+    clearSubmitError();
     if (!query.trim()) {
       input.current?.focus({ preventScroll: true });
       setNudge(true);
@@ -67,10 +70,11 @@ export default function HomePage() {
     setPanel(null);
     setQuiz(true);
   };
-  const go = (q?: string, p?: typeof params) => {
+  const go = async (q?: string, p?: typeof params) => {
     setQuiz(false);
-    if (q !== undefined && p) { setQuery(q); setParams(p); void run({ query: q, params: p }); } else void run();
-    nav("/results");
+    if (!live) { void (q !== undefined && p ? run({ query: q, params: p }) : run()); nav("/results"); return; } // ДЕМО на макетах
+    const id = await (q !== undefined && p ? run({ query: q, params: p }) : run());
+    if (id) nav(`/search/${id}`); // иначе остаёмся на Home и показываем ошибку
   };
   const pick = (q: string) => {
     setQuery(q);
@@ -127,8 +131,8 @@ export default function HomePage() {
               <label>Обратно<input type="date" min={from || today()} value={to} onChange={(e) => setTo(e.target.value)} /></label>
             </div>
             {datesError && <p className="home__error" role="alert">{datesError}</p>}
-            <PanelActions disabled={!from || !to || !!datesError} onReset={() => apply({ dates: undefined })}
-              onApply={() => apply({ dates: dateRange(from, to) })} />
+            <PanelActions disabled={!from || !to || !!datesError} onReset={() => apply({ dates: undefined, duration_days: undefined })}
+              onApply={() => apply({ dates: { start_date: from, end_date: to }, duration_days: Math.min(30, Math.round((Date.parse(to) - Date.parse(from)) / 864e5) + 1) })} />
           </div>
         )}
         {panel === "travelers" && (
@@ -142,7 +146,7 @@ export default function HomePage() {
               </div>
             </div>
             <PanelActions onReset={() => apply({ travelers: undefined })}
-              onApply={() => apply({ travelers: `${people} ${plural(people, "человек", "человека", "человек")}` })} />
+              onApply={() => apply({ travelers: { adults: people, children_ages: plan.travelers?.children_ages ?? [] } })} />
           </div>
         )}
         {panel === "budget" && (
@@ -155,13 +159,16 @@ export default function HomePage() {
               {BUDGETS.map((b) => <button type="button" key={b} className="home__quick" onClick={() => setBudget(String(b))}>до {rub(b)}</button>)}
             </div>
             <PanelActions disabled={!(budgetValue > 0)} onReset={() => apply({ budget: undefined })}
-              onApply={() => apply({ budget: `до ${rub(budgetValue)}` })} />
+              onApply={() => apply({ budget: { amount_minor: Math.round(budgetValue) * 100, currency: "RUB" } })} />
           </div>
         )}
 
-        <button className="home__cta" disabled={phase === "loading"}>
+        {configError && <p className="home__error" role="alert">{configError}</p>}
+        {submitError && !configError && <p className="home__error" role="alert">{submitMessage(submitError)}</p>}
+        {!live && !configError && <p className="home__demo">Демо-режим: backend не подключён, результаты — условные примеры.</p>}
+        <button className="home__cta" disabled={phase === "loading" || busy || !!configError} aria-busy={busy}>
           <MaskIcon src="search-sparkle" size={28} />
-          <span>Создать путешествие</span>
+          <span>{busy ? "Отправляем…" : "Создать путешествие"}</span>
           <Icon name="arrow-right" size={22} stroke={2} />
         </button>
       </form>
@@ -211,4 +218,14 @@ function PanelActions({ onApply, onReset, disabled }: { onApply: () => void; onR
       <button type="button" className="btn btn--sm" disabled={disabled} onClick={onApply}>Готово</button>
     </div>
   );
+}
+
+/** Понятный текст по коду ошибки: 401/403 сессия, 409 конфликт, 422 данные, 429 лимит, 5xx сервер, 0 сеть. */
+function submitMessage(e: { status: number; message: string }): string {
+  if (e.status === 0) return "Нет связи с сервером. Проверьте интернет — запрос не потерян, можно повторить.";
+  if (e.status === 401 || e.status === 403) return "Сессия не начата или истекла. Обновите страницу и повторите.";
+  if (e.status === 409) return "Похожий запрос уже обрабатывается. Подождите секунду и повторите.";
+  if (e.status === 422 || e.status === 400) return `Сервер не принял параметры: ${e.message}`;
+  if (e.status === 429) return "Слишком много запросов. Подождите минуту и повторите.";
+  return "Сервер временно недоступен. Повторите чуть позже.";
 }

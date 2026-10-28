@@ -1,0 +1,23 @@
+# Frontend №1 — вход, викторина, API v0.3, прогресс (по ТЗ «AI_Quiz_Integration»)
+
+## Что сделано
+| Шаг ТЗ | Результат | Файлы |
+|---|---|---|
+| 2. v0 → v0.3 | Старого `/api/search` в коде нет (`api/client.ts` удалён). Транспорт: cookie-сессия (`credentials: include`, один повтор при 403), `ApiError` с кодом/статусом, retry только GET (сеть, 502–504), `AbortSignal`. `POST /searches` с `Idempotency-Key` (повтор после обрыва — тот же ключ), `GET /searches/{id}`, SSE `/events` (через fetch: cookie и любые имена событий), `POST /clarifications`, `PUT /cancellation`, `GET /trips/{id}`. Проверка формы Snapshot — битый JSON даёт понятную ошибку, не краш. | `api/trips.ts`, `api/searches.ts`, `api/v03Search.ts` |
+| 4. Живой прогресс | `SearchContext`: `search_id`, snapshot, `stage`, ошибки, `stalled`. SSE → при обрыве GET-polling с backoff 1→5 с; ревизии монотонны (старый снимок не затирает новый); потолок 5 мин → «идёт дольше обычного». `completed` → `/trip/{trip_id}`; `needs_clarification` → вопрос и ответ с `question_id` + `expected_revision` (409 → подтягиваем актуальное); `failed`/`cancelled`/404/сеть — отдельные экраны. Кнопка «Отменить поиск». Двойной клик → один поиск; устаревший ответ предыдущего поиска отбрасывается (seq). Состояние переживает reload: маршрут `/search/:searchId` берёт данные из GET. | `state/SearchContext.tsx`, `features/search/SearchRoute.tsx`, `ProgressView.tsx`, `App.tsx` |
+| LIVE vs DEMO | Есть `VITE_API_URL` → живой режим, макеты `TRIPS` не подмешиваются. Нет и это dev/`VITE_DEMO_MODE=true` → демо с плашкой. Нет в production → диагностируемая ошибка конфигурации на Home и в экранах, кнопка отключена. | `api/trips.ts` (`isLive`, `CONFIG_ERROR`), `HomePage.tsx` |
+| 3. Викторина | UI/анимации сохранены. Вопросы строятся по тому, чего нет в тексте/параметрах (1–4); полный текст → 0 вопросов. Ответы кладутся в `Params` контракта: `dates.start_date/end_date`, `travelers.adults/children_ages`, `budget.amount_minor`, `wishes` (enum), `origin`, `duration_days`. Расплывчатое время («летом», «в ноябре») → не выдумываем даты: либо точные даты, либо «пока не знаю» (подсказка уходит в текст запроса). Финальный экран «Как я понял запрос»: правка всех значений, валидация (даты, 1–30 дн., 1–9 взрослых, возраст 0–17, бюджет>0). | `features/home/QuizSheet.tsx`, `intent.ts`, `data/plan.ts`, `HomePage.tsx` |
+
+Проверка примера из ТЗ («Из Москвы в Стамбул на 5 дней в ноябре, двое взрослых, до 120 000 ₽, прямой рейс…») → ровно 1 вопрос (даты); в backend ушло: `origin: Москва, duration_days: 5, travelers {2, []}, budget 12000000 копеек RUB, wishes [direct_flight], dates` — без потерь.
+
+## Важные оговорки (честно)
+- **DeepSeek/`intent/preview` не подключён**: в контракте v0.3 такого эндпоинта нет, а ТЗ велит расширять контракт только по согласованию. Поэтому «понимание запроса» — детерминированный локальный разбор (`intent.ts`, помечен на экране «без нейросети»). Заменить на preview можно, подменив `parseIntent`. «Ручной режим при сбое DeepSeek» выполняется автоматически: экран проверки — это и есть ручная форма.
+- Вопросы backend (`Question.field`: destination/duration_days/conflict) показываются текстом с полем ответа; нет схемы выбора вариантов — ждём BE2.
+- Общий `/results` и карточки FE2 в живом режиме не используются: поиск v0.3 даёт одну поездку и ведёт на `/trip/{id}` (FE2). Демо-путь (`/results`) остался только в demo-режиме.
+- История запросов пишет `trip_id` локально (localStorage) — серверная `GET /history` не подключена.
+- `api/types.ts` (v0) и `data/offerToTrip.ts` остались как мёртвый код демо-типов; удаление — отдельным PR после согласования с FE2.
+- CORS/SameSite/Secure, Vercel↔API — требуют настоящего staging backend; не проверено.
+
+## Проверка
+`npm run build` (tsc + vite) — зелёный. Для ручной проверки добавлен **мок backend v0.3**: `node frontend/scripts/mock-api-v03.mjs 8000` (+ `VITE_API_URL=http://localhost:8000 npm run dev`). Сценарии по тексту запроса: «уточни» (вопрос), «ошибка» (failed), «разрыв» (SSE обрывается → polling), «медленно», «429», «500». В браузере прошло: полный путь Home → викторина → прогресс → Trip; уточнение с `question_id`/`expected_revision` (в логе мока); SSE-разрыв → polling → completed; failed; 429/500 → понятные тексты на Home; reload на `/search/:id` восстанавливает прогресс; 3 быстрых клика → 1 запрос в логе; сборка без `VITE_API_URL` → ошибка конфигурации, кнопка отключена; demo-режим (dev) работает на макетах как раньше.
+Не проверено: 401/409 на создании (только 409 на ответе — по коду), реальный backend, Playwright/Vitest (в репозитории не настроены; зависимости не добавлялись).

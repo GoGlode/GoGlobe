@@ -44,4 +44,5 @@ export interface Trip {
   mapImage?: string;
 }
 
-export interface SearchParamsUI { dates?: string; travelers?: string; budget?: string }
+/** Строки — подписи для UI; `plan` — структурированная правда (api/v03Search.ts#Params), которая уходит в POST /searches без потерь. */
+export interface SearchParamsUI { dates?: string; travelers?: string; budget?: string; plan?: import("../api/v03Search").Params }

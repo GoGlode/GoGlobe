@@ -1,7 +1,5 @@
-// Единая точка получения поездок для UI. Сейчас — демо-данные с имитацией задержки (стабильно, без сети).
-import { search } from "../api/client";
+// Демо-поиск для UI на макетах с имитацией задержки (без сети). В живом режиме не используется.
 import type { SearchStatus } from "../api/types";
-import { offerToTrip } from "./offerToTrip";
 import { TRIPS } from "./trips";
 import type { SearchParamsUI, Trip } from "./types";
 
@@ -20,13 +18,8 @@ export function demoStatus(query: string, forced?: string | null): SearchStatus 
   return "ok";
 }
 
-/** Поиск. Без VITE_API_URL — демо с имитацией шагов; с ним — реальный POST /api/search и маппинг Offer → Trip. */
+/** ДЕМО-поиск (только dev/VITE_DEMO_MODE): имитация шагов на макетах. Настоящий поиск — api/searches.ts (v0.3) через SearchContext. */
 export async function searchTrips(query: string, _params: SearchParamsUI, onStep?: (i: number) => void, forced?: string | null): Promise<SearchResult> {
-  if (import.meta.env.VITE_API_URL) {
-    onStep?.(1);
-    const r = await search({ query });
-    return { status: r.status, trips: r.offers.map((o) => offerToTrip(o, r.parsed)), clarifyingQuestion: r.clarifying_question ?? undefined, warnings: r.warnings };
-  }
   for (let i = 0; i < SEARCH_STEPS.length; i++) {
     onStep?.(i);
     await new Promise((r) => setTimeout(r, 650));

@@ -1,22 +1,18 @@
 // Экран ожидания: что ищем и на каком шаге поиск. Владелец: Frontend №1.
-import { Link } from "react-router-dom";
 import { SEARCH_STEPS } from "../../data/api";
 import { useSearch } from "../../state/SearchContext";
-import { Icon, Logo } from "../../ui";
+import { Icon } from "../../ui";
 import { TripSkeleton } from "./StatusViews";
 import "./progress.css";
 
-export default function ProgressView() {
-  const { query, params, step } = useSearch();
+export default function ProgressView({ steps = SEARCH_STEPS, step: stepProp, onCancel, note }: { steps?: string[]; step?: number; onCancel?: () => void; note?: string } = {}) {
+  const { query, params, step: ctxStep } = useSearch();
+  const step = stepProp ?? ctxStep;
   const chips = [params.dates, params.travelers, params.budget].filter(Boolean) as string[];
-  const percent = Math.round(((step + 1) / SEARCH_STEPS.length) * 100);
+  const percent = Math.round(((step + 1) / steps.length) * 100);
 
   return (
     <div className="prog">
-      <header className="prog__top">
-        <Link to="/" aria-label="GoGlobe — на главную"><Logo className="prog__logo" /></Link>
-      </header>
-
       <div className="prog__orb" aria-hidden="true">
         <span className="prog__ring" />
         <span className="prog__core"><Icon name="sparkle" size={34} /></span>
@@ -29,13 +25,15 @@ export default function ProgressView() {
         <span style={{ width: `${percent}%` }} />
       </div>
       <ol className="prog__steps card" aria-live="polite">
-        {SEARCH_STEPS.map((s, i) => (
+        {steps.map((s, i) => (
           <li key={s} className={i < step ? "is-done" : i === step ? "is-now" : ""}>
             <span className="prog__dot">{i < step ? <Icon name="check" size={14} stroke={2.6} /> : i === step ? <span className="prog__spin" /> : null}</span>
             {s.replace("…", "")}
           </li>
         ))}
       </ol>
+      {note && <p className="muted" role="status" style={{ textAlign: "center" }}>{note}</p>}
+      {onCancel && <button type="button" className="btn btn--ghost btn--sm" style={{ margin: "0 auto" }} onClick={onCancel}>Отменить поиск</button>}
       <TripSkeleton />
     </div>
   );

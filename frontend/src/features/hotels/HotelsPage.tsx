@@ -4,7 +4,6 @@ import { TRIPS } from "../../data/trips";
 import type { Hotel } from "../../data/types";
 import { useFavorites } from "../../state/FavoritesContext";
 import { useSearch } from "../../state/SearchContext";
-import { PageHeader } from "../../ui";
 import { HotelCard } from "../trip/tabs/HotelsTab";
 import "../trip/trip.css";
 
@@ -24,8 +23,7 @@ export default function HotelsPage() {
   const list = hotels.filter((h) => (city === "all" || h.city === city) && (f === "all" || h.tags.includes(f)));
   return (
     <>
-      <PageHeader large title="Отели" />
-      <div className="scroll-x" style={{ padding: "0 var(--s-4) 10px" }}>
+      <div className="scroll-x" style={{ padding: "18px var(--s-4) 10px" }}>
         {["all", ...cities].map((c) => <button key={c} className={`chip ${city === c ? "chip--active" : ""}`} onClick={() => setCity(c)}>{c === "all" ? "Все города" : c}</button>)}
       </div>
       <div className="scroll-x" style={{ padding: "0 var(--s-4) 12px" }}>

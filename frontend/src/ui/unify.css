@@ -65,3 +65,18 @@ button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-mod
 .res__controls > * { pointer-events: auto; }
 .res { padding-bottom: 104px; }
 .res > .page-header { margin: 0 calc(var(--s-4) * -1); }
+
+/* Выпадающие списки и меню — сплошной белый фон, без просвечивания */
+.city-menu, .hmenu__list { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="dark"] .city-menu, :root[data-theme="dark"] .hmenu__list { background: #15223b; }
+
+/* Шапка: вместо резкой границы — плавное размытие контента под ней (размытие и подложка гаснут маской) */
+.page-header { background: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; isolation: isolate; }
+.page-header::before { content: ""; position: absolute; inset: 0 0 -24px; z-index: -1; pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--c-bg, #eef4ff) 78%, transparent), color-mix(in srgb, var(--c-bg, #eef4ff) 0%, transparent));
+  -webkit-backdrop-filter: blur(6px) saturate(1.2); backdrop-filter: blur(6px) saturate(1.2);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 62%, transparent 100%); }
+.map .page-header::before { display: none; }
+.page-header__title { display: inline-flex; align-items: center; gap: 10px; justify-content: center; }
+.page-header--large .page-header__title { justify-content: flex-start; }
+.page-header__ic { color: var(--c-primary); flex: none; }

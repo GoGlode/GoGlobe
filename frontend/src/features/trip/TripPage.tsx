@@ -3,6 +3,7 @@
 import { Link, useParams } from "react-router-dom";
 import { getTrip } from "../../data/trips";
 import { useSearch } from "../../state/SearchContext";
+import ApiTripPage from "./ApiTripPage";
 import FlightsTab from "./tabs/FlightsTab";
 import HotelsTab from "./tabs/HotelsTab";
 import ItineraryTab from "./tabs/ItineraryTab";
@@ -13,11 +14,13 @@ import "./trip.css";
 export default function TripPage() {
   const { id, tab = "overview" } = useParams();
   const { trips } = useSearch();
-  const trip = trips.find((t) => t.id === id) ?? getTrip(id); // варианты из ответа API живут только в текущем поиске
+  // Демо-варианты выдачи (макеты) — прежний вид; любой другой id — настоящая поездка из API v0.3, которая грузится по URL и переживает reload
+  const trip = trips.find((t) => t.id === id) ?? getTrip(id);
+  if (!trip && id) return <ApiTripPage id={id} tab={(["overview", "itinerary", "hotels", "flights"] as const).find((x) => x === tab) ?? "overview"} />;
   if (!trip) return (
     <div className="page trip-missing">
       <h2>Вариант не найден</h2>
-      <p className="muted">Он мог остаться в предыдущем поиске. Повторите запрос — подборка соберётся заново.</p>
+      <p className="muted">Повторите запрос — подборка соберётся заново.</p>
       <Link className="btn btn--sm" to="/">Найти путешествие</Link>
     </div>
   );

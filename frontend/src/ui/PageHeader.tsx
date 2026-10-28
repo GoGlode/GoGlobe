@@ -1,14 +1,14 @@
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import Icon from "./Icon";
+import Icon, { type IconName } from "./Icon";
 
 /** large — заголовок вкладки (Профиль, Поездки, Избранное, История): крупно слева, без кнопки «назад» */
-export default function PageHeader({ title, right, onBack, light, large }: { title?: string; right?: ReactNode; onBack?: () => void; light?: boolean; large?: boolean }) {
+export default function PageHeader({ title, right, onBack, light, large, icon }: { title?: string; right?: ReactNode; onBack?: () => void; light?: boolean; large?: boolean; icon?: IconName }) {
   const nav = useNavigate();
   if (large) {
     return (
       <header className="page-header page-header--large">
-        <h1 className="page-header__title">{title}</h1>
+        <h1 className="page-header__title">{icon && <Icon name={icon} size={28} stroke={2} className="page-header__ic" />}{title}</h1>
         {right && <div className="row" style={{ gap: 8, justifyContent: "flex-end" }}>{right}</div>}
       </header>
     );
