@@ -1284,7 +1284,10 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             fail_run(owner, search_id, run_id, "AGENT_INVALID_RESPONSE",
                      "Ответ агента не соответствует контракту", False)
         except Exception as exc:
-            if now() >= deadline:
+            # Provider can return its deadline result a few milliseconds before
+            # the enclosing asyncio timeout fires. Treat that boundary as the
+            # same total-deadline failure instead of a generic agent outage.
+            if (deadline - now()).total_seconds() <= 0.1:
                 fail_run(owner, search_id, run_id, "SEARCH_TIMEOUT",
                          "Агент не ответил в пределах общего срока", True)
                 return
