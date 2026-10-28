@@ -1,0 +1,80 @@
+/* «Жидкое стекло» GoGlobe — собственная отрисовка на чистом CSS (без внешних рецептов).
+   Слои: полупрозрачная заливка с бликом в верхней половине, светлая рамка в 1px, яркая линия-блик по верхнему краю,
+   синеватая тень внутри снизу (преломление) и мягкая цветная тень снаружи. Тёмных контуров нет.
+   Подключается последним в main.tsx и перекрывает прежние фоны и тени. */
+:root {
+  --lg-white-bg: rgba(240, 247, 255, .62);
+  --lg-edge:
+    0 6px 16px -4px rgba(30, 90, 180, .22), 0 1px 2px rgba(16, 36, 72, .06),
+    inset 0 0 0 1px rgba(255, 255, 255, .75),
+    inset 0 1.5px 0 rgba(255, 255, 255, 1);
+  --lg-blue-bg: #0a84ff;
+  --lg-edge-blue: inset 0 .5px 0 rgba(255, 255, 255, .45);
+  --lg-surface-edge:
+    0 10px 28px -8px rgba(30, 90, 180, .2), 0 1px 3px rgba(16, 36, 72, .05),
+    inset 0 0 0 1px rgba(255, 255, 255, .8),
+    inset 0 1.5px 0 #fff;
+}
+
+/* ── Белое стекло ── */
+.btn--ghost, button.chip:not(.chip--active), .circle-btn, .glassnav__item:not(.glassnav__item--center),
+.tcard__heart, .hcard__heart, .res__round, .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
+.home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .hist__filter-btn {
+  background: var(--lg-white-bg);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8); backdrop-filter: blur(12px) saturate(1.8);
+  border: 0; box-shadow: var(--lg-edge);
+  transition: transform .3s, box-shadow .3s, background .2s, color .2s;
+}
+/* Мелкие элементы: тень компактнее */
+button.chip:not(.chip--active), .ttab:not(.is-on), .seg button:not(.on), .fl-modes button:not(.on),
+.home__stepper button, .fl-stepper button, .stepper button, .cal__nav, .fl-swap, .circle-btn, .hist__filter-btn {
+  box-shadow: var(--lg-edge);
+}
+.cal__nav { color: var(--c-primary); }
+
+/* ── Синее стекло ── */
+.btn:not(.btn--ghost), button.chip.chip--active, .ttab.is-on, .seg button.on, .fl-modes button.on,
+.glassnav__item--center, .res__send {
+  background: var(--lg-blue-bg); color: #fff;
+  -webkit-backdrop-filter: blur(8px) saturate(1.5); backdrop-filter: blur(8px) saturate(1.5);
+  border: 0; box-shadow: var(--lg-edge-blue); 
+  transition: transform .3s, box-shadow .3s, filter .2s;
+}
+.chip--active, .ttab.is-on, .seg button.on, .fl-modes button.on {
+  box-shadow:
+    var(--lg-edge-blue);
+}
+.glassnav__item--center { text-shadow: none; }
+
+/* ── Наведение / нажатие ── */
+@media (hover: hover) {
+  .btn:not(:disabled):hover, .btn--ghost:not(:disabled):hover, button.chip:hover, .circle-btn:hover, .glassnav__item:hover,
+  .tcard__heart:hover, .hcard__heart:hover, .res__round:not(:disabled):hover, .cal__nav:hover, .fl-swap:hover { transform: scale(1.04); }
+  .btn:not(.btn--ghost):not(:disabled):hover, .glassnav__item--center:hover { filter: brightness(1.06); }
+}
+.btn:active, .circle-btn:active, button.chip:active, .glassnav__item:active { transform: scale(.97); }
+.btn:disabled { box-shadow: var(--lg-edge-blue); filter: saturate(.6); }
+.btn--ghost:disabled { box-shadow: var(--lg-edge); filter: none; }
+@media (prefers-reduced-motion: reduce) { .btn, .circle-btn, button.chip, .glassnav__item { transition: none; } }
+
+/* Кнопки, у которых экран задал свой фон более специфичным правилом */
+.hcard2__actions .btn.btn--ghost, .prof-edit {
+  background: var(--lg-white-bg); color: var(--c-link);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8); backdrop-filter: blur(12px) saturate(1.8);
+  box-shadow: var(--lg-edge);
+}
+.prof-edit:hover { background: var(--lg-white-bg); filter: brightness(1.03); }
+
+/* ── Поверхности: карточки и панели в том же стекле ── */
+.card, .prof-card, .fcard, .fav, .hcard2, .tl__card, .mtcard, .cal.card, .stop, .pin__lbl {
+  background: var(--lg-surface-bg); border: 0; box-shadow: var(--lg-surface-edge);
+  -webkit-backdrop-filter: blur(16px) saturate(1.7); backdrop-filter: blur(16px) saturate(1.7);
+}
+.seg { background: rgba(255, 255, 255, .45); box-shadow: var(--lg-surface-edge); border: 0; }
+.prof-stats > div, .prof-prefs__ic, .prof-chip { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .8), inset 0 1px 0 #fff; }
+.prof-field input { background: rgba(255, 255, 255, .7); border: 0; box-shadow: var(--lg-surface-edge); }
+
+/* Липкие шапки и ряд дней: фон с размытием, чтобы прокручиваемый контент не просвечивал сквозь заголовок */
+.page-header { background: color-mix(in srgb, var(--grad-page) 88%, transparent); -webkit-backdrop-filter: blur(18px) saturate(1.6); backdrop-filter: blur(18px) saturate(1.6); }
+.days { background: rgba(238, 245, 255, .94); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.days { top: 67px; padding-top: 8px; }

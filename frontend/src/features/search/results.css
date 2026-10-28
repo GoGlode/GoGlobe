@@ -1,0 +1,64 @@
+.res { padding: 0 var(--s-4) 16px; display: flex; flex-direction: column; gap: 12px; }
+.res__top { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; }
+.res__query { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 28px; }
+.res__query p { flex: 1; font-size: 14px; line-height: 1.35; }
+.res__spark { width: 40px; height: 40px; border-radius: 50%; background: #e3f1ff; color: var(--c-primary); display: grid; place-items: center; flex: none; }
+.res__send { width: 44px; height: 44px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: grid; place-items: center; box-shadow: var(--shadow-glow); flex: none; }
+.res__chips { margin: 0 calc(var(--s-4) * -1); padding: 0 var(--s-4); }
+.res__chips .chip { background: var(--c-glass-strong); box-shadow: var(--shadow-sm); }
+.res__bubble { display: flex; gap: 10px; align-items: flex-start; }
+.res__avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--grad-primary); color: #fff; display: grid; place-items: center; flex: none; }
+.res__bubble p { font-size: 14px; line-height: 1.4; padding: 12px 14px; border-radius: 18px; }
+.res__rail { margin: 0 calc(var(--s-4) * -1); padding: 4px var(--s-4) 8px; scroll-padding: 0 var(--s-4); }
+.tcard { width: calc(100% - 28px); background: var(--c-surface); border-radius: 30px; box-shadow: var(--shadow-md); overflow: hidden; }
+.tcard__img { height: 215px; position: relative; cursor: pointer; }
+.tcard__count { position: absolute; top: 14px; left: 14px; background: rgba(16, 36, 72, .55); color: #fff; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; backdrop-filter: blur(6px); }
+.tcard__heart { position: absolute; top: 12px; right: 12px; width: 46px; height: 46px; border-radius: 50%; background: #fff; display: grid; place-items: center; color: var(--c-navy); box-shadow: var(--shadow-sm); }
+.tcard__heart.is-on, .res__round--heart.is-on { color: var(--c-danger); }
+.tcard__body { padding: 16px; margin-top: -26px; position: relative; background: #fff; border-radius: 26px 26px 0 0; display: grid; gap: 12px; }
+.tcard__body h2 { font-size: 21px; line-height: 1.2; }
+.tcard__sum { font-size: 14px; line-height: 1.4; margin-top: 4px; }
+.tcard__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tcard__tags .chip { padding: 7px 10px; font-size: 12.5px; gap: 6px; }
+.tcard__stats { display: grid; grid-template-columns: auto auto auto; justify-content: space-between; gap: 6px; }
+.tcard__stats b { white-space: nowrap; }
+.tcard__stats > div { display: flex; align-items: center; gap: 8px; color: var(--c-primary); font-size: 13px; }
+.tcard__stats span { display: grid; color: var(--c-navy); }
+.tcard__stats b { font-weight: 600; font-size: 14px; }
+.tcard__stats small { color: var(--c-muted); font-size: 12px; }
+.tcard__thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; height: 72px; }
+.tcard__thumbs img { border-radius: 12px; }
+.tcard__why { display: flex; gap: 10px; background: #eaf4ff; border-radius: 18px; padding: 12px; font-size: 13px; line-height: 1.4; }
+.tcard__why > span { color: var(--c-primary); flex: none; }
+.tcard__why b { display: block; margin-bottom: 2px; font-size: 14px; }
+.tcard__why p { color: #46587a; }
+.res__controls { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 8px 0 4px; }
+.res__round { width: 62px; height: 62px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-md); display: grid; place-items: center; color: var(--c-navy); }
+.res__round--heart { color: var(--c-danger); }
+.res__dots { position: relative; display: flex; gap: 8px; padding: 8px 12px; border-radius: 999px; background: rgba(255, 255, 255, .6); }
+.res__dots button { position: relative; z-index: 1; width: 9px; height: 9px; border-radius: 50%; background: #c5d4ea; transition: transform .3s; }
+.res__dots button:active { transform: scale(.8); }
+/* Синяя капля поверх серых точек; положение и размер задаёт физика в ResultsPage.tsx */
+.res__blob { position: absolute; z-index: 2; left: 12px; top: 50%; width: 9px; height: 9px; translate: 0 -50%; border-radius: 999px; background: var(--c-primary);
+  box-shadow: 0 0 0 .6px var(--c-primary), 0 2px 8px rgba(7, 135, 249, .45), inset 0 1px 0 rgba(255, 255, 255, .5); pointer-events: none; }
+.res__demo { font-size: 12px; text-align: center; }
+.res-empty { text-align: center; margin-top: 120px; display: grid; gap: 14px; justify-items: center; }
+.tcard__share { right: 66px; width: 46px; }
+.res__filters { display: grid; gap: 6px; }
+.res__found { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: var(--c-muted); }
+.res__found button { color: var(--c-link); font-weight: 600; padding: 4px 2px; }
+.res__none { display: grid; justify-items: center; gap: 12px; padding: 32px 8px; text-align: center; font-size: 15px; }
+.res__filters .res__chips { padding-top: 2px; padding-bottom: 10px; margin-bottom: -6px; }
+.tcard__body h2 { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.tcard__sum { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.tcard__stats b { overflow: hidden; text-overflow: ellipsis; }
+.res__logo { height: 30px; width: auto; }
+
+/* Обратная связь на тап: кнопка «вдавливается», ✕ «проседает», ♥ «бьётся» */
+.res__round { position: relative; transition: transform .12s ease-out; }
+.res__round:active { transform: scale(.86); }
+.res__round--skip.tap svg { animation: tap-dip .4s ease-out; }
+.res__round--heart.tap svg { animation: tap-beat 1s cubic-bezier(.45, 0, .25, 1); }
+@keyframes tap-dip { 0% { transform: scale(1); opacity: 1; } 35% { transform: scale(.72); opacity: .55; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes tap-beat { 0% { transform: scale(1); } 30% { transform: scale(1.28); } 55% { transform: scale(.96); } 75% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .res__round, .res__round.tap svg { animation: none !important; transition: none; } }
