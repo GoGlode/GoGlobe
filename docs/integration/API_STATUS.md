@@ -38,14 +38,14 @@
 | 19 | POST | `/trips/{trip_id}/quote-searches` | `QuoteRequest` → `Accepted` | demo | `post_trips_trip_id_quote_searches` | `tests/test_quote_flow.py`, `tests/test_public_api_contract_audit.py` | BE1 + BE2 scoring |
 | 20 | GET | `/history` | query → `HistoryList` | scaffold | `get_history` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
 | 21 | DELETE | `/history/{search_id}` | — → 204 | scaffold | `delete_history_search_id` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
-| 22 | PUT | `/favorites/{trip_id}` | `Empty` → `TripFlags` | scaffold | `put_favorites_trip_id` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
-| 23 | DELETE | `/favorites/{trip_id}` | — → 204 | scaffold | `delete_favorites_trip_id` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
-| 24 | GET | `/favorites` | query → `TripList` | scaffold | `get_favorites` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
+| 22 | PUT | `/favorites/{trip_id}` | `Empty` → `TripFlags` | demo | `put_favorites_trip_id` | `tests/test_bff.py`, `tests/test_public_api_contract_audit.py` | BE1 |
+| 23 | DELETE | `/favorites/{trip_id}` | — → 204 | demo | `delete_favorites_trip_id` | `tests/test_bff.py`, `tests/test_public_api_contract_audit.py` | BE1 |
+| 24 | GET | `/favorites` | query → `TripList` | demo | `get_favorites` | `tests/test_bff.py`, `tests/test_public_api_contract_audit.py` | BE1 |
 | 25 | POST | `/trips/{trip_id}/share` | `Empty` → `ShareReceipt` | scaffold | `post_trips_trip_id_share` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
 | 26 | DELETE | `/trips/{trip_id}/share` | — → 204 | scaffold | `delete_trips_trip_id_share` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
 | 27 | GET | `/shared/{token}` | — → `PublicTrip` | scaffold | `get_shared_token` | scaffold/501 coverage in `tests/test_bff.py` | BE1 |
 
-Итого по v0.3: **15 demo**, **12 scaffold**. `demo` не означает завершённый
+Итого по v0.3: **18 demo**, **9 scaffold**. `demo` не означает завершённый
 production endpoint: текущий runtime поддерживает clarification/cancellation и
 persisted asynchronous snapshot quote flow с cancel/restart guards, но внешние
 production-провайдеры и деплой этим статусом не подтверждаются.

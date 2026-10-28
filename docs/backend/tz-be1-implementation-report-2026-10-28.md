@@ -70,7 +70,7 @@ Date: 2026-10-28 (Europe/Moscow)
   external queue/lease system for multi-instance deployment.
 - Intent preview currently uses the required safe fallback path; no DeepSeek
   key or agreed BE2 LLM response contract was available.
-- Twelve v0.3 P1/P2 operations remain explicit 501 scaffolds: recovery/restore,
+- Nine v0.3 P1/P2 operations remain explicit 501 scaffolds: recovery/restore,
   Trip deletion, history, favorites and share.
 - `render.yaml` uses ephemeral `/tmp` SQLite and therefore must not be described
   as durable production storage.

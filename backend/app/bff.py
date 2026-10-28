@@ -36,6 +36,7 @@ IMPLEMENTED = {
     "get_trips_trip_id_flights", "post_intent_preview",
     "post_searches_search_id_clarifications",
     "put_searches_search_id_cancellation",
+    "put_favorites_trip_id", "delete_favorites_trip_id", "get_favorites",
 }
 
 PREVIEW_RATE_PER_MINUTE = 20
@@ -758,10 +759,28 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 limit = query.get("limit", 50)
                 page = trips[:limit]
                 return success("TripList", {"items": [card(trip) for trip in page], "next_cursor": page[-1]["trip_id"] if len(trips) > limit else None, "sources": []})
+            if operation_id == "get_favorites":
+                rows = db.execute(
+                    "SELECT payload FROM objects WHERE kind='trip' AND owner=? "
+                    "AND (expires IS NULL OR expires>?) ORDER BY id",
+                    (owner, stamp(now())),
+                ).fetchall()
+                trips = [json.loads(row["payload"]) for row in rows]
+                trips = [trip for trip in trips if trip["favorite_at"] is not None]
+                cursor = query.get("cursor")
+                if cursor:
+                    trips = [trip for trip in trips if trip["trip_id"] > cursor]
+                limit = query.get("limit", 50)
+                page = trips[:limit]
+                return success("TripList", {
+                    "items": [card(trip) for trip in page],
+                    "next_cursor": page[-1]["trip_id"] if len(trips) > limit else None,
+                    "sources": [],
+                })
             try:
                 trip = get_object(db, "trip", request.path_params["trip_id"], owner)
             except ApiError as exc:
-                if operation_id == "delete_trips_trip_id_saved" and exc.status == 404:
+                if operation_id in {"delete_trips_trip_id_saved", "delete_favorites_trip_id"} and exc.status == 404:
                     return Response(status_code=204)
                 raise
             if operation_id == "get_trips_trip_id":
@@ -790,6 +809,25 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 validate("Trip", trip)
                 put(db, "trip", trip, owner)
                 return success("Trip", trip)
+            if operation_id == "put_favorites_trip_id":
+                if trip["favorite_at"] is None or trip["saved_at"] is None:
+                    current = stamp(now())
+                    trip["saved_at"] = trip["saved_at"] or current
+                    trip["favorite_at"] = trip["favorite_at"] or current
+                    trip["expires_at"] = None
+                    trip["revision"] += 1
+                    trip["updated_at"] = current
+                    put(db, "trip", trip, owner)
+                return success("TripFlags", {key: trip[key] for key in (
+                    "trip_id", "revision", "saved_at", "favorite_at", "expires_at")})
+            if operation_id == "delete_favorites_trip_id":
+                if trip["favorite_at"] is not None:
+                    trip["favorite_at"] = None
+                    trip["expires_at"] = None if trip["saved_at"] else stamp(now() + timedelta(days=7))
+                    trip["revision"] += 1
+                    trip["updated_at"] = stamp(now())
+                    put(db, "trip", trip, owner)
+                return Response(status_code=204)
             desired = operation_id == "put_trips_trip_id_saved"
             if bool(trip["saved_at"]) != desired:
                 trip["saved_at"] = stamp(now()) if desired else None

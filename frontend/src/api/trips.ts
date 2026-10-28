@@ -151,7 +151,7 @@ const asList = (l: TripList): TripList => {
   if (!l || !Array.isArray(l.items)) throw new ApiError(0, "BAD_JSON", "Сервер вернул некорректный список", true);
   return l;
 };
-export const listSaved = () => go<TripList>("GET", "/trips?saved=true&limit=100").then(asList);
-export const listFavorites = () => go<TripList>("GET", "/favorites?limit=100").then(asList);
+export const listSaved = () => go<TripList>("GET", "/trips?saved=true&limit=50").then(asList);
+export const listFavorites = () => go<TripList>("GET", "/favorites?limit=50").then(asList);
 export const startQuoteSearch = (id: string, b: QuoteRequest) =>
   go<Accepted>("POST", `/trips/${enc(id)}/quote-searches`, b, { "Idempotency-Key": crypto.randomUUID() });

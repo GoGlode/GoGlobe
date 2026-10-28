@@ -123,8 +123,14 @@ def test_all_implemented_successes_validate_against_approved_schemas(client):
     assert_contract_response(saved, "put_trips_trip_id_saved")
     listed = client.get("/api/v1/trips?saved=true")
     assert_contract_response(listed, "get_trips")
+    favorite = client.put("/api/v1/favorites/" + accepted["trip_id"], json={})
+    assert_contract_response(favorite, "put_favorites_trip_id")
+    favorites = client.get("/api/v1/favorites")
+    assert_contract_response(favorites, "get_favorites")
+    unfavorite = client.delete("/api/v1/favorites/" + accepted["trip_id"])
+    assert_contract_response(unfavorite, "delete_favorites_trip_id")
     schedule = client.put(trip_url + "/schedule", json={
-        "expected_revision": saved.json()["revision"],
+        "expected_revision": favorite.json()["revision"] + 1,
         "start_date": "2026-11-10", "end_date": "2026-11-11",
         "timezone": "Europe/Rome",
     })

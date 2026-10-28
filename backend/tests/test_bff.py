@@ -145,6 +145,33 @@ def test_restart_preserves_saved(tmp_path):
         assert len(restarted.get("/api/v1/trips?saved=true").json()["items"]) == 1
 
 
+def test_favorites_are_saved_idempotent_and_listed(client):
+    login(client)
+    trip_id = plan(client).json()["trip_id"]
+    base = f"/api/v1/trips/{trip_id}"
+
+    favorite = client.put(f"/api/v1/favorites/{trip_id}", json={})
+    assert favorite.status_code == 200
+    validate("TripFlags", favorite.json())
+    assert favorite.json()["saved_at"] is not None
+    assert favorite.json()["favorite_at"] is not None
+    assert favorite.json()["expires_at"] is None
+    assert client.put(f"/api/v1/favorites/{trip_id}", json={}).json() == favorite.json()
+
+    listed = client.get("/api/v1/favorites?limit=50")
+    assert listed.status_code == 200
+    validate("TripList", listed.json())
+    assert [item["trip_id"] for item in listed.json()["items"]] == [trip_id]
+
+    assert client.delete(f"/api/v1/favorites/{trip_id}").status_code == 204
+    assert client.delete(f"/api/v1/favorites/{trip_id}").status_code == 204
+    assert client.delete("/api/v1/favorites/missing").status_code == 204
+    assert client.get("/api/v1/favorites").json()["items"] == []
+    trip = client.get(base).json()
+    assert trip["saved_at"] is not None
+    assert trip["favorite_at"] is None
+
+
 def test_atomic_acceptance_rollback(tmp_path, monkeypatch):
     from app import bff
     original_put = bff.put
