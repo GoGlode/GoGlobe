@@ -1,8 +1,10 @@
 // Вкладки «Отели» / «Перелёты» поездки из API v0.3: состояния компонента, предложения, фильтры по реальным полям.
 // Цены не суммируются и не сравниваются между разными basis; «Перейти к предложению» — только при реальной http(s)-ссылке.
 import { useEffect, useMemo, useState } from "react";
+import { getSearch, streamSearch } from "../../api/searches";
 import { ApiError, getFlights, getHotels, getTrip, startQuoteSearch } from "../../api/trips";
 import type { Component, FlightList, FlightOffer, HotelList, HotelOffer, Price, Trip, Warning } from "../../api/v03";
+import { isTerminal } from "../../api/v03Search";
 import { dateRange, plural } from "../../data/format";
 import { Icon, Photo, Rating } from "../../ui";
 import { Notice } from "./ApiTripPage";
@@ -19,7 +21,40 @@ export default function OffersTab({ kind, trip, onTrip }: { kind: Kind; trip: Tr
   const load = () => (kind === "hotels" ? getHotels(trip.trip_id) : getFlights(trip.trip_id)) as Promise<List>;
   const [s, reload, put] = useApi<List>(load, [trip.trip_id, kind, trip.revision]);
   const [tries, setTries] = useState(0);
+  const [quoteSearchId, setQuoteSearchId] = useState<string | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
   const state = s.status === "ready" ? s.data.state : null;
+
+  useEffect(() => {
+    if (!quoteSearchId) return;
+    const ctl = new AbortController();
+    void (async () => {
+      try {
+        let snapshot = await getSearch(quoteSearchId, ctl.signal);
+        if (!isTerminal(snapshot.state)) {
+          await streamSearch(quoteSearchId, (next) => { snapshot = next; }, ctl.signal);
+        }
+        if (ctl.signal.aborted) return;
+        if (snapshot.state !== "completed") {
+          setQuoteError(snapshot.error?.message ?? "Поиск тарифов не завершён");
+          return;
+        }
+        const [freshTrip, freshList] = await Promise.all([getTrip(trip.trip_id), load()]);
+        if (ctl.signal.aborted) return;
+        onTrip(freshTrip);
+        put(freshList);
+      } catch (error) {
+        if (!ctl.signal.aborted) {
+          setQuoteError(error instanceof ApiError ? error.message : "Не удалось получить результат поиска тарифов");
+        }
+      } finally {
+        if (!ctl.signal.aborted) setQuoteSearchId(null);
+      }
+    })();
+    return () => ctl.abort();
+    // `load`, `onTrip` and `put` intentionally refer to the current Trip tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteSearchId, trip.trip_id, kind]);
 
   // Пока поиск идёт — тихо опрашиваем (SSE для тарифов не обязателен); потолок, чтобы не крутиться бесконечно
   useEffect(() => {
@@ -39,6 +74,8 @@ export default function OffersTab({ kind, trip, onTrip }: { kind: Kind; trip: Tr
   return (
     <div className="page atrip">
       {l.warnings.map((w: Warning) => <p className="atrip__warn" role="note" key={w.code + w.message}><Icon name="clock" size={16} />{w.message}</p>)}
+      {quoteSearchId && <p className="atrip__warn" role="status" aria-live="polite"><Icon name="refresh" size={16} />Ищем предложения…</p>}
+      {quoteError && <p className="atrip__warn atrip__warn--err" role="alert">{quoteError}</p>}
       {stale && l.items.length > 0 && <p className="atrip__warn" role="note">Поездка изменилась после этого поиска — цены относятся к прежним параметрам. Запустите поиск заново.</p>}
       {(l.state === "queued" || l.state === "processing") && <p className="atrip__warn" role="status" aria-live="polite"><Icon name="refresh" size={16} />Ищем предложения… {tries >= 20 && "Поиск идёт дольше обычного — обновите страницу позже."}</p>}
       {l.state === "failed" && <p className="atrip__warn atrip__warn--err" role="alert">Поиск {name} не удался{l.error ? `: ${l.error.message}` : ""}. Маршрут по дням доступен.</p>}
@@ -49,7 +86,7 @@ export default function OffersTab({ kind, trip, onTrip }: { kind: Kind; trip: Tr
         : `Для ${guestsF(l as FlightList)}, из ${(l as FlightList).context!.origin}, ${dateRange((l as FlightList).context!.flight_dates.outbound_date, (l as FlightList).context!.flight_dates.return_date)}`}</p>}
       {l.items.length > 0 && (kind === "hotels" ? <Hotels items={l.items as HotelOffer[]} /> : <Flights items={l.items as FlightOffer[]} />)}
       {l.items.length > 0 && l.sources.length > 0 && <p className="muted atrip__fine">Источники: {l.sources.map((x) => `${x.name} (${when(x.checked_at) ?? "—"})`).join("; ")}{l.data_mode === "demo" ? " · демо" : ""}</p>}
-      {comp.state !== "processing" && comp.state !== "queued" && <QuoteForm kind={kind} trip={trip} onTrip={onTrip} onStarted={() => { setTries(0); reload(); }} />}
+      {!quoteSearchId && comp.state !== "processing" && comp.state !== "queued" && <QuoteForm kind={kind} trip={trip} onTrip={onTrip} onStarted={(searchId) => { setQuoteError(null); setTries(0); setQuoteSearchId(searchId); }} />}
     </div>
   );
 }
@@ -136,7 +173,7 @@ function Go({ url }: { url: string | null }) {
   return <a className="btn btn--sm btn--ghost" href={url} target="_blank" rel="noopener noreferrer">Перейти к предложению<Icon name="arrow-right" size={18} /></a>;
 }
 
-function QuoteForm({ kind, trip, onTrip, onStarted }: { kind: Kind; trip: Trip; onTrip: (t: Trip) => void; onStarted: () => void }) {
+function QuoteForm({ kind, trip, onTrip, onStarted }: { kind: Kind; trip: Trip; onTrip: (t: Trip) => void; onStarted: (searchId: string) => void }) {
   const [adults, setAdults] = useState(String(trip.travelers?.adults ?? 2));
   const [origin, setOrigin] = useState(trip.origin ?? "");
   const [a, setA] = useState(trip.schedule.start_date ?? "");
@@ -147,11 +184,11 @@ function QuoteForm({ kind, trip, onTrip, onStarted }: { kind: Kind; trip: Trip; 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr(null); setBusy(true);
     try {
-      await startQuoteSearch(trip.trip_id, {
+      const accepted = await startQuoteSearch(trip.trip_id, {
         expected_revision: trip.revision, components: [kind], travelers: { adults: Number(adults), children_ages: trip.travelers?.children_ages ?? [] },
         ...(kind === "hotels" ? { stay: { check_in: a, check_out: b } } : { origin: origin.trim(), flight_dates: { outbound_date: a, return_date: b } }),
       });
-      onStarted();
+      onStarted(accepted.search_id);
     } catch (x) {
       if (x instanceof ApiError && x.isConflict) {
         try { onTrip(await getTrip(trip.trip_id)); } catch { /* оставим форму */ }
