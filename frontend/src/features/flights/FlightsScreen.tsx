@@ -133,7 +133,7 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
 
   return (
     <div className="fl-screen">
-      <PageHeader title="Перелёты" onBack={back}
+      <PageHeader title="" onBack={back}
         right={<button type="button" className={`circle-btn fl-filter-btn ${activeFilters ? "is-on" : ""}`} aria-label="Фильтры" aria-expanded={filtersOpen}
           onClick={() => setFiltersOpen(!filtersOpen)}><Icon name="filter" />{activeFilters > 0 && <span className="fl-badge">{activeFilters}</span>}</button>} />
       {trip && <TripTabs id={trip.id} current="flights" />}
@@ -144,7 +144,6 @@ export default function FlightsScreen({ trip }: { trip?: Trip }) {
             <button type="button" className={`chip ${withBaggage ? "chip--active" : ""}`} aria-pressed={withBaggage} onClick={() => setWithBaggage(!withBaggage)}>С багажом</button>
           </div>
         )}
-        {!trip && <p className="fl-lead muted">Подбери удобный маршрут для своего путешествия</p>}
 
         <div className="fl-modes" role="tablist" aria-label="Тип маршрута">
           {MODES.map((m) => <button key={m.id} type="button" role="tab" aria-selected={mode === m.id} className={mode === m.id ? "on" : ""} onClick={() => changeMode(m.id)}>{m.label}</button>)}

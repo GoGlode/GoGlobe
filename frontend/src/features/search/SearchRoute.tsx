@@ -34,7 +34,7 @@ export default function SearchRoute() {
   }
   if (!s) return <ProgressView steps={STEPS} step={0} />;
   if (s.state === "completed") return <Navigate to={`/trip/${s.trip_id}`} replace />;
-  if (s.state === "needs_clarification" && s.clarification) return <Clarify key={s.revision} question={s.clarification.message} query={query} onAnswer={answer} />;
+  if (s.state === "needs_clarification" && s.clarification) return <Clarify key={s.revision} field={s.clarification.field} question={s.clarification.message} query={query} onAnswer={answer} />;
   if (s.state === "failed") return (
     <Fail title="Не удалось собрать поездку" text={s.error?.message ?? "Поиск завершился ошибкой. Запрос не потерян."}>
       {query && <button className="btn" onClick={() => void run().then((id) => id && nav(`/search/${id}`))}><Icon name="refresh" size={20} />Повторить</button>}
@@ -50,7 +50,9 @@ export default function SearchRoute() {
   </>;
 }
 
-function Clarify({ question, query, onAnswer }: { question: string; query: string; onAnswer: (t: string) => Promise<{ status: number; message: string } | null> }) {
+const HINT = { destination: "Например: Стамбул", duration_days: "Например: 5 (число дней, от 1 до 30)", conflict: "Напишите, какой из вариантов верный" } as const;
+
+function Clarify({ field, question, query, onAnswer }: { field: keyof typeof HINT; question: string; query: string; onAnswer: (t: string) => Promise<{ status: number; message: string } | null> }) {
   const [text, setText] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ function Clarify({ question, query, onAnswer }: { question: string; query: strin
       {query && <p className="muted st__q">«{query}»</p>}
       <p className="st__ask glass" id="clarify-q">{question}</p>
       <label className="visually-hidden" htmlFor="clarify-a">Ваш ответ</label>
-      <textarea id="clarify-a" className="st__ans" rows={3} maxLength={1000} aria-describedby="clarify-q" value={text} onChange={(e) => setText(e.target.value)} />
+      <textarea id="clarify-a" className="st__ans" rows={3} maxLength={1000} placeholder={HINT[field] ?? ""} aria-describedby="clarify-q" value={text} onChange={(e) => setText(e.target.value)} />
       {err && <p className="home__error" role="alert">{err}</p>}
       <button className="btn" disabled={!ok}>{busy ? "Отправляем…" : "Продолжить поиск"}<Icon name="arrow-right" size={20} /></button>
       <Link to="/" className="st__link">Изменить запрос целиком</Link>
