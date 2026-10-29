@@ -1,0 +1,18 @@
+{
+  "kind": "hotels",
+  "source": "goglobe-demo/hotels-istanbul",
+  "fetched_at": "2026-10-20T09:05:00Z",
+  "context": {"destination": "Стамбул", "stay": {"check_in": "2026-12-03", "check_out": "2026-12-07"}, "travelers": {"adults": 2, "children_ages": [8]}},
+  "result": {
+    "status": "ok", "data_mode": "demo",
+    "items": [{
+      "offer_id": "h_demo_istanbul", "name": "Sirkeci Mansion", "photos": [], "place": null, "stars": 4, "rating": 9.1,
+      "check_in": "2026-12-03", "check_out": "2026-12-07",
+      "total_price": {"status": "quoted", "money": {"amount_minor": 5800000, "currency": "RUB"}, "basis": "party_stay_total", "coverage": ["hotels"], "exclusions": ["flights", "activities", "transfers"], "source_ids": ["src_h_istanbul"], "checked_at": "2026-10-20T09:05:00Z", "valid_until": "2026-10-20T09:20:00Z", "stale": false, "note": null},
+      "nightly_price": {"status": "quoted", "money": {"amount_minor": 1450000, "currency": "RUB"}, "basis": "room_night", "coverage": ["hotels"], "exclusions": ["flights", "activities", "transfers"], "source_ids": ["src_h_istanbul"], "checked_at": "2026-10-20T09:05:00Z", "valid_until": "2026-10-20T09:20:00Z", "stale": false, "note": null},
+      "booking_url": "https://example.com/hotel/istanbul", "availability": "available", "source_ids": ["src_h_istanbul"]
+    }],
+    "sources": [{"source_id": "src_h_istanbul", "name": "Demo Istanbul hotel feed", "url": "https://example.com", "checked_at": "2026-10-20T09:05:00Z", "kind": "provider"}],
+    "warnings": [{"code": "DEMO_DATA", "message": "Демонстрационные данные отеля, бронирование недоступно.", "trip_id": null}]
+  }
+}

@@ -1,0 +1,52 @@
+/* Поездка из API v0.3 (ApiTripPage, OffersTab). Только токены темы — работает в светлой и тёмной. */
+.atrip { padding-bottom: 28px; display: grid; gap: 10px; }
+.atrip h2 { font-size: 22px; margin: 4px 0 0; overflow-wrap: anywhere; }
+.atrip h3 { font-size: 17px; margin: 14px 0 2px; }
+.atrip__hero { height: 180px; border-radius: 22px; overflow: hidden; }
+.atrip__facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.atrip__facts span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; background: var(--c-chip); font-size: 14px; }
+.atrip__fine { font-size: 13px; margin: 0; }
+.atrip__link { background: none; border: 0; color: var(--c-link); font: inherit; font-size: 13px; text-align: left; padding: 4px 0; cursor: pointer; }
+.atrip__src { margin: 0; padding-left: 18px; font-size: 14px; }
+.atrip-demo { margin: 4px var(--s-4) 0; padding: 8px 12px; border-radius: 14px; background: var(--c-chip); color: var(--c-muted); font-size: 13px; }
+.atrip-notice { text-align: center; display: grid; justify-items: center; gap: 10px; padding-top: 56px; }
+.atrip-skel { display: grid; gap: 12px; padding-top: 12px; }
+.atrip-skel i { display: block; height: 84px; border-radius: 22px; background: var(--c-chip); animation: atrip-pulse 1.2s ease-in-out infinite; }
+@keyframes atrip-pulse { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .atrip-skel i { animation: none; } }
+.atrip__comp { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.atrip__comp li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
+.cs--ready { color: var(--c-success); } .cs--failed { color: var(--c-danger-text); } .cs--blocked, .cs--empty, .cs--not_requested { color: var(--c-muted); }
+.atrip__sched { padding: 14px; display: grid; gap: 10px; }
+.atrip__sched label, .atrip__filters label { display: grid; gap: 4px; font-size: 13px; color: var(--c-muted); }
+.atrip input:not([type=checkbox]), .atrip select { height: 44px; padding: 0 12px; border-radius: 14px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text); font: inherit; font-size: 16px; min-width: 0; }
+.atrip input:focus-visible, .atrip select:focus-visible, .atrip__link:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+.atrip__filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; align-items: end; }
+.atrip__check { display: flex !important; align-items: center; gap: 8px !important; color: var(--c-text) !important; min-height: 44px; }
+.atrip__check input { width: 20px; height: 20px; }
+.atrip__warn { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--c-chip); font-size: 14px; }
+.atrip__warn--err { color: var(--c-danger-text); }
+.atrip__ctx { margin: 0; font-size: 14px; font-weight: 600; }
+.atrip__day { padding: 14px; }
+.atrip__day h3 { margin: 0 0 8px; }
+.atrip__day ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.atrip__day li { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: start; }
+.atrip__time { font-variant-numeric: tabular-nums; color: var(--c-muted); font-size: 14px; }
+.atrip__what { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.ver { font-style: normal; font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--c-chip); color: var(--c-muted); white-space: nowrap; }
+.ver--verified { background: var(--c-success-bg); color: var(--c-success); }
+.offer { padding: 14px; display: grid; gap: 8px; overflow: hidden; }
+.offer__img { height: 150px; border-radius: 18px; overflow: hidden; margin: -4px -4px 0; }
+.offer__top { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+.offer h3 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.offer__leg { display: grid; gap: 2px; }
+.offer .btn { justify-self: start; }
+.pb { display: grid; gap: 2px; }
+.pb small { font-size: 12.5px; }
+.pb__amt { font-size: 20px; }
+.pb__basis { font-size: 13px; color: var(--c-muted); }
+.pb__warn { color: var(--c-danger-text); }
+.pb--c .pb__amt { font-size: 15px; }
+.pb--none { margin: 0; font-size: 14px; }
+.atrip-demo + .atrip, .atrip-demo + .page { margin-top: 10px; }
+.atrip-demo { margin-bottom: 8px; }

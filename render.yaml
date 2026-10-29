@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: goglobe-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: off
+    envVars:
+      - key: GOGLOBE_CORS_ORIGINS
+        value: https://goglobe-backend.onrender.com
+      - key: GOGLOBE_DB_PATH
+        value: /tmp/goglobe.sqlite3
+      - key: GOGLOBE_COOKIE_SAMESITE
+        value: lax
+      - key: GOGLOBE_PROVIDERS
+        value: snapshot
+      - key: GOGLOBE_PLANNER_MODE
+        value: agent
+      - key: GOGLOBE_INTENT_MODE
+        value: fallback

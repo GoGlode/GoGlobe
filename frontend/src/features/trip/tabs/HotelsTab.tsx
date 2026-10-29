@@ -1,6 +1,57 @@
-import { ComingSoon } from "../../../ui";
-import type { Trip } from "../../../data/types";
+// Вкладка «Отели»: города, фильтры, карточки. Владелец: Frontend №2.
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { money } from "../../../data/format";
+import type { Hotel, Trip } from "../../../data/types";
+import { useFavorites } from "../../../state/FavoritesContext";
+import { Icon, PageHeader, Photo, Rating } from "../../../ui";
+import TripTabs from "../TripTabs";
 
-export default function HotelsTab({ trip }: { trip: Trip }) {
-  return <ComingSoon title={`Отели · ${trip.title}`} />;
+const FILTERS = [{ id: "all", label: "Все" }, { id: "boutique", label: "Бутик-отели" }, { id: "stars45", label: "4★ и 5★" }, { id: "view", label: "С видом" }] as const;
+
+export default function HotelsTab({ trip: t }: { trip: Trip }) {
+  const nav = useNavigate();
+  const { has, toggle } = useFavorites();
+  const [city, setCity] = useState(t.cities[t.cities.length - 1]);
+  const [f, setF] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const list = t.hotels.filter((h) => h.city === city && (f === "all" || h.tags.includes(f)));
+  return (
+    <>
+      <PageHeader title="Отели" onBack={() => nav(`/trip/${t.id}`)} right={<button className="circle-btn" aria-label="В избранное" style={{ color: has(t.id) ? "var(--c-danger)" : undefined }} onClick={() => toggle(t.id)}><Icon name="heart" size={20} filled={has(t.id)} /></button>} />
+      <TripTabs id={t.id} current="hotels" />
+      {t.cities.length > 1 && <div className="seg" role="tablist">{t.cities.map((c) => <button key={c} role="tab" aria-selected={c === city} className={c === city ? "on" : ""} onClick={() => setCity(c)}>{c}</button>)}</div>}
+      <div className="scroll-x" style={{ padding: "0 var(--s-4) 12px" }}>{FILTERS.map((x) => <button key={x.id} className={`chip ${f === x.id ? "chip--active" : ""}`} onClick={() => setF(x.id)}>{x.label}</button>)}</div>
+      {list.length === 0 && <p className="muted" style={{ textAlign: "center", padding: 32 }}>В этом городе нет отелей по выбранному фильтру</p>}
+      {list.map((h) => <HotelCard key={h.id} h={h} fav={has(h.id)} onFav={() => toggle(h.id)} />)}
+    </>
+  );
+}
+
+export function HotelCard({ h, fav, onFav }: { h: Hotel; fav: boolean; onFav: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <article className="hcard">
+      <div className="hcard__img"><Photo src={h.photo} pos={h.photoPos} alt={h.name} />
+        <button className={`hcard__heart ${fav ? "is-on" : ""}`} aria-label="В избранное" onClick={onFav}><Icon name="heart" size={22} filled={fav} /></button></div>
+      <div className="hcard__body">
+        <div className="hcard__top"><div><h3>{h.name}</h3>{h.rating != null && <Rating value={h.rating} count={h.reviews} />}</div></div>
+        <div className="hcard__loc"><Icon name="pin" size={18} />{h.location}</div>
+        <div className="hcard__am">{h.amenities.map((a) => <span key={a.label}><Icon name={a.icon} size={18} />{a.label}</span>)}</div>
+        <div className="hcard__foot">
+          <div className="hcard__price"><b>{h.pricePerNight ? money(h.pricePerNight) : "—"}</b><small>{h.pricePerNight ? h.priceNote ?? "за ночь" : "цена не указана"}</small></div>
+          <button className="btn btn--sm" aria-expanded={open} aria-controls={`hotel-details-${h.id}`} onClick={() => setOpen(!open)}>Подробнее <Icon name="arrow-right" size={18} /></button>
+        </div>
+        {open && <section className="hcard__details" id={`hotel-details-${h.id}`} aria-label={`Информация об отеле ${h.name}`}>
+          <div className="hcard__details-photo"><Photo src={h.photo} pos={h.photoPos} alt={h.name} /></div>
+          <dl>
+            <div><dt>Локация</dt><dd>{h.location || "Дополнительная информация недоступна"}</dd></div>
+            <div><dt>Рейтинг</dt><dd>{h.rating != null ? `${h.rating}${h.reviews != null ? ` · ${h.reviews} отзывов` : ""}` : "Дополнительная информация недоступна"}</dd></div>
+            <div><dt>Удобства</dt><dd>{h.amenities.length ? h.amenities.map((a) => a.label).join(", ") : "Дополнительная информация недоступна"}</dd></div>
+            <div><dt>Цена</dt><dd>{h.pricePerNight ? `${money(h.pricePerNight)}${h.priceNote ? ` · ${h.priceNote}` : ""}` : "Дополнительная информация недоступна"}</dd></div>
+            <div><dt>Источник данных</dt><dd>Дополнительная информация недоступна</dd></div>
+          </dl>
+        </section>}
+      </div>
+    </article>
+  );
 }
