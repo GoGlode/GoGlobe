@@ -1,6 +1,6 @@
 // Поиск API v0.3: создание, снимок, ответ на вопрос, отмена, SSE. Владелец: Frontend №1.
 // Только настоящий backend (`/api/v1/*`). Старого `/api/search` здесь нет и быть не должно.
-import { ApiError, apiCall } from "./trips";
+import { ApiError, apiCall, isLive } from "./trips";
 import { isTerminal, type Accepted, type Params, type PlanRequest, type Snapshot } from "./v03Search";
 
 const enc = encodeURIComponent;
@@ -55,7 +55,7 @@ export function parseSse(buf: string): { events: { id?: string; event?: string; 
 
 /** SSE через fetch (cookie + любые имена событий). Возвращает, когда поток закрылся; бросает при обрыве/ошибке статуса. */
 export async function streamSearch(id: string, onSnapshot: (s: Snapshot) => void, signal: AbortSignal): Promise<void> {
-  if (!BASE) throw new ApiError(0, "CONFIG", "Нет адреса backend");
+  if (!isLive) throw new ApiError(0, "CONFIG", "Нет адреса backend");
   const r = await fetch(`${BASE}/api/v1/searches/${enc(id)}/events`, { credentials: "include", headers: { Accept: "text/event-stream" }, signal });
   if (!r.ok || !r.body) throw new ApiError(r.status, "SSE", "Поток событий недоступен", true);
   const reader = r.body.getReader(); const dec = new TextDecoder();

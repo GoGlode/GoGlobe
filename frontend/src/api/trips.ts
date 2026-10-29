@@ -8,10 +8,11 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL as string | undefined;
 // Демо разрешено в dev или при явном VITE_DEMO_MODE=true. Прод без VITE_API_URL — ошибка конфигурации, а не «красивые» фальшивые данные.
-const DEMO_OK = !import.meta.env.PROD || import.meta.env.VITE_DEMO_MODE === "true";
-export const isDemoApi = !BASE && DEMO_OK;
-export const isLive = !!BASE;
-export const CONFIG_ERROR = !BASE && !DEMO_OK ? "Не задан VITE_API_URL: приложение не знает адрес backend. Задайте его в настройках деплоя (или VITE_DEMO_MODE=true для демо)." : null;
+const SAME_ORIGIN_LIVE = import.meta.env.PROD && !BASE && import.meta.env.VITE_DEMO_MODE !== "true";
+const DEMO_OK = !SAME_ORIGIN_LIVE && (!import.meta.env.PROD || import.meta.env.VITE_DEMO_MODE === "true");
+export const isLive = !!BASE || SAME_ORIGIN_LIVE;
+export const isDemoApi = !isLive && DEMO_OK;
+export const CONFIG_ERROR = !isLive && !DEMO_OK ? "Не задан адрес backend." : null;
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public retryable = false) { super(message); }
