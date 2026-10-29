@@ -1,5 +1,6 @@
 """Минимальное транзакционное хранилище каркаса BFF (SQLite)."""
 import json
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,10 +8,13 @@ from pathlib import Path
 
 class Database:
     def __init__(self, path: str):
-        self.path = str(Path(path).resolve())
-        Path(self.path).parent.mkdir(parents=True, exist_ok=True)
+        self.url = os.getenv("DATABASE_URL")
+        self.postgres = bool(self.url)
+        self.path = None if self.postgres else str(Path(path).resolve())
+        if self.path:
+            Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as db:
-            db.executescript("""
+            schema = """
                 CREATE TABLE IF NOT EXISTS owners(id TEXT PRIMARY KEY);
                 CREATE TABLE IF NOT EXISTS sessions(
                     token_hash TEXT PRIMARY KEY, owner TEXT NOT NULL, expires TEXT NOT NULL);
@@ -39,19 +43,31 @@ class Database:
                     PRIMARY KEY(search_id,run_id));
                 CREATE INDEX IF NOT EXISTS idx_search_runs_state
                     ON search_runs(state, deadline_at);
-            """)
-            columns = {row["name"] for row in db.execute("PRAGMA table_info(search_runs)")}
-            if "kind" not in columns:
+            """
+            if self.postgres:
+                for statement in schema.split(";"):
+                    if statement.strip():
+                        db.execute(statement)
+            else:
+                db.executescript(schema)
+            columns = ({row["name"] for row in db.execute("PRAGMA table_info(search_runs)")}
+                       if not self.postgres else set())
+            if not self.postgres and "kind" not in columns:
                 db.execute(
                     "ALTER TABLE search_runs ADD COLUMN kind TEXT NOT NULL DEFAULT 'plan'"
                 )
 
     @contextmanager
     def connect(self, *, write: bool = True):
-        db = sqlite3.connect(self.path, timeout=0.25)
-        db.row_factory = sqlite3.Row
+        if self.postgres:
+            import psycopg
+            from psycopg.rows import dict_row
+            db = _PostgresConnection(psycopg.connect(self.url, row_factory=dict_row))
+        else:
+            db = sqlite3.connect(self.path, timeout=0.25)
+            db.row_factory = sqlite3.Row
         try:
-            db.execute("BEGIN IMMEDIATE" if write else "BEGIN")
+            db.execute("BEGIN" if self.postgres or not write else "BEGIN IMMEDIATE")
             yield db
             db.commit()
         except BaseException:
@@ -59,6 +75,19 @@ class Database:
             raise
         finally:
             db.close()
+
+
+class _PostgresConnection:
+    """Small DB-API adapter: BFF keeps SQLite qmark SQL and mapping rows."""
+    def __init__(self, connection):
+        self.connection = connection
+
+    def execute(self, sql, params=()):
+        return self.connection.execute(sql.replace("?", "%s"), params)
+
+    def commit(self): self.connection.commit()
+    def rollback(self): self.connection.rollback()
+    def close(self): self.connection.close()
 
 
 def put(db, kind: str, value: dict, owner: str):
