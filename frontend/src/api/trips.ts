@@ -6,8 +6,9 @@ import type {
   Accepted, ApiErrorBody, FlightList, HotelList, QuoteRequest, ScheduleRequest, Trip, TripCard, TripFlags, TripList,
 } from "./v03";
 
-const BASE = import.meta.env.VITE_API_URL as string | undefined;
-// Демо разрешено в dev или при явном VITE_DEMO_MODE=true. Прод без VITE_API_URL — ошибка конфигурации, а не «красивые» фальшивые данные.
+// Пустая база означает same-origin: `/api/v1/*`, а не `/undefined/api/v1/*`.
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+// Демо разрешено в dev или при явном VITE_DEMO_MODE=true. Прод без VITE_API_URL — same-origin live, а не «красивые» фальшивые данные.
 const SAME_ORIGIN_LIVE = import.meta.env.PROD && !BASE && import.meta.env.VITE_DEMO_MODE !== "true";
 const DEMO_OK = !SAME_ORIGIN_LIVE && (!import.meta.env.PROD || import.meta.env.VITE_DEMO_MODE === "true");
 export const isLive = !!BASE || SAME_ORIGIN_LIVE;

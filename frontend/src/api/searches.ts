@@ -4,7 +4,8 @@ import { ApiError, apiCall, isLive } from "./trips";
 import { isTerminal, type Accepted, type Params, type PlanRequest, type Snapshot } from "./v03Search";
 
 const enc = encodeURIComponent;
-const BASE = import.meta.env.VITE_API_URL as string | undefined;
+// Пустая база означает same-origin: `/api/v1/*`, а не `/undefined/api/v1/*`.
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 /** Ключ идемпотентности: новый на каждое намерение пользователя; повтор того же запроса после обрыва — с тем же ключом. */
 export const newKey = () => crypto.randomUUID();
