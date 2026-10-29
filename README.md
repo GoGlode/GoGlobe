@@ -4,7 +4,7 @@
 
 - [Сайт](https://goglobe-backend-d89q.onrender.com/)
 - [Backend health](https://goglobe-backend-d89q.onrender.com/health)
-- Презентация: TODO — публичная ссылка
+- [Презентация](https://drive.google.com/file/d/1E3ZMWWEqtVPTePGX-UjqVSgEPwbHWPXR/view?usp=sharing)
 - Видеообзор: TODO — публичная ссылка
 
 GoGlobe — AI-помощник для планирования поездок. Пользователь описывает путешествие обычным языком, получает понятный маршрут, уточняющие вопросы и может сохранить поездку.
