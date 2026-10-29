@@ -10,8 +10,8 @@ from copy import deepcopy
 
 from app.contracts import examples
 from app.integrations.ports import DestinationCriteria, remaining_seconds
-from app.intent_preview import preview_intent
-from app.planning import AgentPlan, NeedsClarification, PlanContext
+from app.intent_preview import preview_intent_async
+from app.planning import AgentPlan, NeedsClarification, PlanContext, UnsupportedDemo
 
 
 class AgentPlanner:
@@ -20,14 +20,11 @@ class AgentPlanner:
     async def plan(self, context: PlanContext) -> AgentPlan:
         # Backend #2's safe no-provider parsing principle: explicit v0.3 params
         # take precedence over words in the query.
-        parsed = preview_intent(context.query, context.params)["parsed"]
+        parsed = (await preview_intent_async(context.query, context.params))["parsed"]
         destination_query = parsed["destination"]
         if destination_query is None:
             raise NeedsClarification("destination", "Куда вы хотите поехать?")
         duration = parsed["duration_days"]
-        if duration is None:
-            raise NeedsClarification("duration_days", "На сколько дней планируется поездка?")
-
         remaining_seconds(context.deadline_at)
         destinations = await context.tools.destinations(
             DestinationCriteria(destination_query, context.deadline_at)
@@ -36,9 +33,13 @@ class AgentPlanner:
         if not destinations.items:
             # A name without a port-backed result has no trustworthy timezone
             # or catalog source for the BFF Destination contract.
-            raise NeedsClarification(
-                "destination", "Уточните направление: его не удалось подтвердить в каталоге."
+            if destination_query.casefold() in {"турция", "turkey"}:
+                raise NeedsClarification("destination", "Какой город в Турции выбрать? Доступны: Стамбул.")
+            raise UnsupportedDemo(
+                "Направление не найдено в демонстрационном каталоге. Доступны: Рим, Стамбул и Казань."
             )
+        if duration is None:
+            raise NeedsClarification("duration_days", "На сколько дней планируется поездка?")
 
         destination = deepcopy(destinations.items[0]["destination"])
         fixture = deepcopy(examples()["trip_relative"]["value"])

@@ -39,3 +39,15 @@ def test_agent_planner_prefers_explicit_params_to_query():
 
     assert result.destination["name"] == "Рим"
     assert result.duration_days == 3
+
+
+def test_agent_planner_supports_istanbul_and_kazan():
+    for city in ("Стамбул", "Казань"):
+        result = asyncio.run(AgentPlanner().plan(context(f"{city} на 2 дня")))
+        assert result.destination["name"] == city
+        assert result.duration_days == 2
+
+
+def test_country_query_asks_for_city_before_duration():
+    with pytest.raises(NeedsClarification, match="Какой город в Турции"):
+        asyncio.run(AgentPlanner().plan(context("Хочу в Турцию летом")))

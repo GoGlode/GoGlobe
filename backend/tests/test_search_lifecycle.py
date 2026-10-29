@@ -38,6 +38,31 @@ def answer(client, search_id, snapshot, value):
     )
 
 
+def test_turkey_city_clarification_does_not_repeat_and_completes(client):
+    accepted = post_search(client, "Хочу в Турцию летом")
+    assert accepted.status_code == 202
+    location = accepted.headers["location"]
+    snapshot = client.get(location).json()
+    assert snapshot["state"] == "needs_clarification"
+    assert snapshot["clarification"]["field"] == "destination"
+    assert "город" in snapshot["clarification"]["message"]
+
+    city = answer(client, accepted.json()["search_id"], snapshot, "Стамбул")
+    assert city.status_code == 202
+    snapshot = client.get(location).json()
+    assert snapshot["state"] == "needs_clarification"
+    assert snapshot["clarification"]["field"] == "duration_days"
+    assert "город" not in snapshot["clarification"]["message"]
+
+    completed = answer(client, accepted.json()["search_id"], snapshot, "2 дня")
+    assert completed.status_code == 202
+    final = client.get(location).json()
+    assert final["state"] == "completed"
+    trip = client.get(f"/api/v1/trips/{accepted.json()['trip_id']}").json()
+    assert trip["destination"]["name"] == "Стамбул"
+    assert trip["duration_days"] == 2
+
+
 def test_query_without_explicit_params_materializes_itinerary(client):
     accepted = post_search(client, "Хочу в Рим на 2 дня")
     assert accepted.status_code == 202

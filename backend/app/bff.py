@@ -1257,7 +1257,7 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
                 question = {
                     "question_id": "q_" + uuid4().hex,
                     "field": exc.field,
-                    "message": clarification_message(exc.field),
+                    "message": exc.message[:500] or clarification_message(exc.field),
                 }
                 snapshot.update(
                     state="needs_clarification", stage=None,
@@ -1289,9 +1289,9 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         except (TimeoutError, asyncio.TimeoutError):
             fail_run(owner, search_id, run_id, "SEARCH_TIMEOUT",
                      "Агент не ответил в пределах общего срока", True)
-        except UnsupportedDemo:
+        except UnsupportedDemo as exc:
             fail_run(owner, search_id, run_id, "MOCK_SCENARIO_UNSUPPORTED",
-                     "Демонстрационный планировщик не поддерживает запрос", False)
+                     str(exc) or "Демонстрационный планировщик не поддерживает запрос", False)
         except (ValueError, ValidationError, TypeError, AttributeError):
             fail_run(owner, search_id, run_id, "AGENT_INVALID_RESPONSE",
                      "Ответ агента не соответствует контракту", False)

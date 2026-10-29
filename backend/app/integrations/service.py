@@ -3,6 +3,7 @@ import asyncio
 from dataclasses import replace
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 from app.contracts import examples
@@ -100,13 +101,25 @@ class DemoFlightProvider:
 class DemoDestinationProvider:
     data_mode = "demo"
 
+    _DESTINATIONS: ClassVar = {
+        "рим": ("Рим", "Europe/Rome", "rome"),
+        "rome": ("Рим", "Europe/Rome", "rome"),
+        "стамбул": ("Стамбул", "Europe/Istanbul", "istanbul"),
+        "istanbul": ("Стамбул", "Europe/Istanbul", "istanbul"),
+        "казань": ("Казань", "Europe/Moscow", "kazan"),
+        "kazan": ("Казань", "Europe/Moscow", "kazan"),
+    }
+
     async def search(self, criteria: DestinationCriteria) -> ToolResult:
-        if criteria.query.strip().casefold() not in {"рим", "rome"}:
+        catalog_entry = self._DESTINATIONS.get(criteria.query.strip().casefold())
+        if catalog_entry is None:
             return ToolResult("ok", [], [], [], "demo")
         destination = deepcopy(examples()["trip_relative"]["value"]["destination"])
-        source = {"source_id": "demo_rome_catalog", "name": "Демонстрационный каталог Рима",
+        name, timezone_name, slug = catalog_entry
+        destination.update(name=name, timezone=timezone_name)
+        source = {"source_id": f"demo_{slug}_catalog", "name": f"Демонстрационный каталог: {name}",
                   "url": None, "checked_at": "2026-10-20T09:00:00Z", "kind": "catalog"}
-        place = {"place_id": "demo_rome", "name": destination["name"], "latitude": None,
+        place = {"place_id": f"demo_{slug}", "name": destination["name"], "latitude": None,
                  "longitude": None, "timezone": destination["timezone"], "verification": "unknown",
                  "source_ids": [source["source_id"]]}
         return ToolResult("ok", [{"destination": destination, "place": place, "source_ids": place["source_ids"]}],
