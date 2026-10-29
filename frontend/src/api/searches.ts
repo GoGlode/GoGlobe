@@ -21,7 +21,7 @@ export interface IntentPreview {
   parsed: Params;
   questions: { id: string; field: string; kind: string; title: string; required: boolean; options: unknown[] }[];
   warnings: { code: string; message: string }[];
-  analysis_mode: "fallback" | "model";
+  analysis_mode: "fallback" | "llm";
 }
 
 export const previewIntent = (query: string, params: Params, signal?: AbortSignal) =>

@@ -6,10 +6,13 @@ more trustworthy than text inference.
 """
 from __future__ import annotations
 
-from copy import deepcopy
 import re
 import secrets
-from typing import Any, Mapping
+from collections.abc import Mapping
+from copy import deepcopy
+from typing import Any
+
+from app.agent.intent_llm import extract_intent
 
 
 _DESTINATIONS = {
@@ -66,6 +69,59 @@ def preview_intent(query: str, params: Mapping[str, Any] | None = None) -> dict[
         "warnings": [],
         "analysis_mode": "fallback",
     }
+
+
+async def preview_intent_async(query: str, params: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Use LLM once when configured; malformed/provider output stays fallback."""
+    fallback = preview_intent(query, params)
+    raw = await extract_intent(query)
+    if raw is None:
+        return fallback
+    explicit = params or {}
+    parsed = _safe_llm(raw, fallback["parsed"])
+    # Form values always win; a conflicting model value is not silently used.
+    for field in ("destination", "duration_days", "dates", "origin", "travelers", "budget"):
+        value = explicit.get(field) if isinstance(explicit, Mapping) else None
+        if value is not None:
+            parsed[field] = deepcopy(value)
+    if isinstance(explicit, Mapping) and isinstance(explicit.get("wishes"), list):
+        parsed["wishes"] = _wishes(explicit, "")
+    result = {**fallback, "parsed": parsed, "questions": _questions(parsed)[:3], "analysis_mode": "llm"}
+    return result
+
+
+def _safe_llm(raw: Mapping[str, Any], fallback: Mapping[str, Any]) -> dict[str, Any]:
+    parsed = deepcopy(dict(fallback))
+    destination = raw.get("destination")
+    if isinstance(destination, str) and 1 <= len(destination.strip()) <= 200:
+        parsed["destination"] = destination.strip()
+    duration = raw.get("duration_days")
+    if type(duration) is int and 1 <= duration <= 30:
+        parsed["duration_days"] = duration
+    origin = raw.get("origin")
+    if isinstance(origin, str) and 1 <= len(origin.strip()) <= 200:
+        parsed["origin"] = origin.strip()
+    dates = raw.get("dates")
+    if isinstance(dates, Mapping) and _valid_dates(dates):
+        parsed["dates"] = {"start_date": dates["start_date"], "end_date": dates["end_date"]}
+    travelers = raw.get("travelers")
+    if isinstance(travelers, Mapping) and type(travelers.get("adults")) is int and 1 <= travelers["adults"] <= 9 and isinstance(travelers.get("children_ages", []), list) and all(type(age) is int and 0 <= age <= 17 for age in travelers.get("children_ages", [])):
+        parsed["travelers"] = {"adults": travelers["adults"], "children_ages": travelers.get("children_ages", [])}
+    budget = raw.get("budget")
+    if isinstance(budget, Mapping) and type(budget.get("amount_minor")) is int and 1 <= budget["amount_minor"] <= 9_000_000_000_000 and budget.get("currency") == "RUB":
+        parsed["budget"] = {"amount_minor": budget["amount_minor"], "currency": "RUB"}
+    wishes = raw.get("wishes")
+    if isinstance(wishes, list):
+        parsed["wishes"] = list(dict.fromkeys(item for item in wishes if item in {"near_sea", "sea_view", "direct_flight", "breakfast"}))[:4]
+    return parsed
+
+
+def _valid_dates(value: Mapping[str, Any]) -> bool:
+    from datetime import date
+    try:
+        return isinstance(value.get("start_date"), str) and isinstance(value.get("end_date"), str) and date.fromisoformat(value["start_date"]) <= date.fromisoformat(value["end_date"])
+    except ValueError:
+        return False
 
 
 def _explicit_string(params: Mapping[str, Any], field: str) -> str | None:

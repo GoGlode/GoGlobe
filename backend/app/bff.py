@@ -26,7 +26,7 @@ from app.contracts import examples, specification, validate
 from app.database import Database, put
 from app.integrations.ports import FlightCriteria, HotelCriteria
 from app.integrations.service import IntegrationTools
-from app.intent_preview import preview_intent
+from app.intent_preview import preview_intent, preview_intent_async
 from app.planning import (
     DemoPlanner,
     NeedsClarification,
@@ -1458,7 +1458,7 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
             window.append(current)
         slot = preview_slots.setdefault(owner, asyncio.Semaphore(2))
         async with slot:
-            result = preview_intent(body["query"], params)
+            result = await preview_intent_async(body["query"], params)
         return JSONResponse(result)
 
     for path, methods in specification()["paths"].items():

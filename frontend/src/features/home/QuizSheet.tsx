@@ -52,7 +52,11 @@ export default function QuizSheet({ query, params, onDone, onClose }: {
   // Что уже известно — не спрашиваем. Вопросов не больше 4; «чего хочется» — только если остался запас и пожеланий в тексте нет.
   const local = useMemo(() => parseIntent(query, params.plan ?? {}), [query, params.plan]);
   const [u, setU] = useState(local);
-  const steps = useMemo<Step[]>(() => { const q: Step[] = u.missing.slice(0, 4); if (q.length > 0 && q.length < 4 && !u.plan.wishes?.length) q.push("prefs"); return [...q, "review"]; }, [u]);
+  const [serverSteps, setServerSteps] = useState<Step[] | null>(null);
+  const steps = useMemo<Step[]>(() => {
+    if (serverSteps) return [...serverSteps, "review"];
+    const q: Step[] = u.missing.slice(0, 4); if (q.length > 0 && q.length < 4 && !u.plan.wishes?.length) q.push("prefs"); return [...q, "review"];
+  }, [serverSteps, u]);
   const [i, setI] = useState(0);
   const step = steps[i];
   const [plan, setPlan] = useState<Params>(local.plan);
@@ -69,6 +73,7 @@ export default function QuizSheet({ query, params, onDone, onClose }: {
     setU(local);
     setPlan(local.plan);
     setI(0);
+    setServerSteps(null);
     edited.current = false;
     if (!isLive) return;
     const ctl = new AbortController();
@@ -78,6 +83,9 @@ export default function QuizSheet({ query, params, onDone, onClose }: {
       const understood = parseIntent(query, { ...local.plan, ...parsed });
       setU({ ...understood, monthHint: local.monthHint ?? understood.monthHint });
       setPlan(understood.plan);
+      const supported = preview.questions.map((question) => question.field)
+        .filter((field): field is Step => field === "dates" || field === "travelers" || field === "origin" || field === "budget");
+      setServerSteps(supported.length ? [...new Set(supported)].slice(0, 3) : null);
     }).catch(() => { /* Локальный безопасный разбор остаётся рабочим fallback. */ });
     return () => ctl.abort();
   }, [query, local]);
