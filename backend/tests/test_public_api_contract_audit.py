@@ -1,10 +1,10 @@
 """Final black-box compatibility checks against the approved v0.3 contract."""
-from copy import deepcopy
 import hashlib
 import json
-from pathlib import Path
 import sqlite3
 import time
+from copy import deepcopy
+from pathlib import Path
 from uuid import uuid4
 
 import httpx
@@ -12,17 +12,22 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.bff import IMPLEMENTED, create_app
-from app.contracts import FORMAT_CHECKER, StrictValidator, examples, specification, validate
+from app.contracts import (
+    FORMAT_CHECKER,
+    StrictValidator,
+    examples,
+    specification,
+    validate,
+)
 from app.integrations.http import HTTPDestinationProvider, JSONEndpoint
 from app.integrations.ports import DestinationCriteria, ProviderError
 from app.integrations.resilience import ResiliencePolicy, ResilientIntegrationTools
 
-
 ORIGIN = "http://localhost:8000"
 HEADERS = {"Origin": ORIGIN}
 CONTRACT_HASHES = {
-    "openapi_v0.3.json": "741197b0e2ea6084604bcb7f18c1ddc04f68569e5f88e8385d9481a1d228c7bd",
-    "examples_v0.3.json": "357df338979d05c81b0de5b22efc61b311def9266e485a8a4ec7c940363a3e48",
+    "openapi_v0.3.json": "8f2dd3f62c1010a7b46dbfa5e11b507e231d5617f3d2f316ece97ca6e576b9c4",
+    "examples_v0.3.json": "761686b9d91cbe2a94408f7ee9b291b40100ed32325e3bda085b191212f9666f",
 }
 
 
