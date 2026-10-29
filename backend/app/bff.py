@@ -20,13 +20,21 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 from starlette.exceptions import HTTPException
 
-from app.contracts import examples, specification, validate
+from app.agent.planner_adapter import AgentPlanner
 from app.config import env_bool, env_choice, env_float, env_origins
+from app.contracts import examples, specification, validate
 from app.database import Database, put
 from app.integrations.ports import FlightCriteria, HotelCriteria
 from app.integrations.service import IntegrationTools
 from app.intent_preview import preview_intent
-from app.planning import NeedsClarification, Planner, PlanningService, UnsupportedDemo, validate_timezone
+from app.planning import (
+    DemoPlanner,
+    NeedsClarification,
+    Planner,
+    PlanningService,
+    UnsupportedDemo,
+    validate_timezone,
+)
 
 IMPLEMENTED = {
     "post_session", "delete_session", "post_searches", "get_searches_search_id",
@@ -103,7 +111,9 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
     cookie_samesite = env_choice(
         "GOGLOBE_COOKIE_SAMESITE", "lax", {"lax", "strict", "none"},
     )
-    planning = PlanningService(agent, tools)
+    planner_mode = env_choice("GOGLOBE_PLANNER_MODE", "agent", {"agent", "demo"})
+    selected_agent = agent or (AgentPlanner() if planner_mode == "agent" else DemoPlanner())
+    planning = PlanningService(selected_agent, tools)
     configured_db_path = db_path if db_path is not None else os.getenv(
         "GOGLOBE_DB_PATH", "data/goglobe.sqlite3"
     )
