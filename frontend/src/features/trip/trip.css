@@ -24,9 +24,13 @@
 .tplace::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.5)); }
 .tcta { position: sticky; bottom: 14px; z-index: 6; padding: 0 var(--s-4); margin-top: 20px; }
 /* Маршрут */
-.days { display: flex; gap: 8px; padding: 4px var(--s-4) 12px; position: sticky; top: 72px; z-index: 4; }
+.page-header.page-header--flow { position: static; z-index: auto; }
+.page-header--flow::before { display: none; }
+.page-header--flow .page-header__title { min-width: 0; overflow-wrap: anywhere; }
+.days { display: flex; gap: 8px; padding: 4px var(--s-4) 12px; position: static; background: transparent; box-shadow: none; }
+.days .chip { white-space: nowrap; }
 .tl { padding: 0 var(--s-4); position: relative; }
-.tl__day { display: grid; grid-template-columns: 26px 1fr; gap: 10px; padding-bottom: 14px; position: relative; scroll-margin-top: 130px; }
+.tl__day { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding-bottom: 14px; position: relative; scroll-margin-top: var(--s-4); }
 .tl__rail { position: relative; } .tl__rail::before { content: ""; position: absolute; left: 9px; top: 20px; bottom: -14px; width: 2px; background: #cfe2fb; }
 .tl__day:last-child .tl__rail::before { display: none; }
 .tl__dot { width: 20px; height: 20px; border-radius: 50%; background: var(--c-primary); box-shadow: 0 0 0 5px #d9ecff; margin-top: 2px; }
@@ -54,6 +58,12 @@
 .hcard__foot { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 4px; }
 .hcard__price b { font-size: 24px; display: block; } .hcard__price small { color: var(--c-muted); }
 .hcard__note { font-size: 13px; background: #fff7e6; border-radius: 12px; padding: 10px 12px; color: #7a5a14; }
+.hcard__details { display: grid; gap: 12px; padding: 12px; border-radius: 16px; background: #f1f7ff; }
+.hcard__details-photo { height: 132px; overflow: hidden; border-radius: 12px; }
+.hcard__details dl { display: grid; gap: 8px; margin: 0; }
+.hcard__details dl > div { display: grid; grid-template-columns: 102px minmax(0, 1fr); gap: 8px; }
+.hcard__details dt { color: var(--c-muted); }
+.hcard__details dd { margin: 0; overflow-wrap: anywhere; }
 /* Карта: на всю ширину под шапкой, как на референсе. Пропорции контейнера = пропорциям картинки, чтобы проценты остановок совпадали с координатами */
 .map { position: relative; margin: 0; aspect-ratio: 1000 / 1480; overflow: hidden; background: #1c6fc0; }
 .map__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }

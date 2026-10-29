@@ -13,7 +13,7 @@ export default function ItineraryTab({ trip: t }: { trip: Trip }) {
   const jump = (d: number) => { setCur(d); document.getElementById(`day-${d}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
   return (
     <>
-      <PageHeader title="Маршрут" onBack={() => nav(`/trip/${t.id}`)} right={<>
+      <PageHeader className="page-header--flow" title="Маршрут" onBack={() => nav(`/trip/${t.id}`)} right={<>
         <button className="circle-btn" aria-label="В избранное" style={{ color: has(t.id) ? "var(--c-danger)" : undefined }} onClick={() => toggle(t.id)}><Icon name="heart" size={20} filled={has(t.id)} /></button>
       </>} />
       <TripTabs id={t.id} current="itinerary" />
