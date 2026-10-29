@@ -26,7 +26,7 @@ from app.contracts import examples, specification, validate
 from app.database import Database, put
 from app.integrations.ports import FlightCriteria, HotelCriteria
 from app.integrations.service import IntegrationTools
-from app.intent_preview import preview_intent, preview_intent_async
+from app.intent_preview import preview_intent_async
 from app.planning import (
     DemoPlanner,
     NeedsClarification,
