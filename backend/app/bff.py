@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from jsonschema import Draft202012Validator, FormatChecker, ValidationError
+from psycopg import Error as PsycopgError
 from starlette.exceptions import HTTPException
 
 from app.agent.planner_adapter import AgentPlanner
@@ -1552,15 +1553,15 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         try:
             with database.connect(write=False) as db:
                 db.execute("SELECT 1 FROM owners LIMIT 1").fetchone()
-        except sqlite3.Error as exc:
+        except (sqlite3.Error, PsycopgError) as exc:
             logging.getLogger("goglobe").warning(
-                "Health storage check failed sqlite_code=%s",
-                getattr(exc, "sqlite_errorcode", None),
+                "Health storage check failed error_type=%s", type(exc).__name__,
             )
             return JSONResponse({"status": "degraded", "storage": "unavailable"}, status_code=503)
         policy = getattr(planning.tools, "policy", None)
         provider_mode = getattr(policy, "provider_mode", "snapshot")
-        return {"status": "ok", "mode": provider_mode, "contract": "0.3.1", "storage": "sqlite",
+        return {"status": "ok", "mode": provider_mode, "contract": "0.3.1",
+                "storage": "postgres" if database.postgres else "sqlite",
                 "implemented_operations": len(IMPLEMENTED), "scaffold_operations": 28 - len(IMPLEMENTED)}
 
     async def resume_pending_runs():
