@@ -27,6 +27,7 @@ from app.contracts import examples, specification, validate
 from app.database import Database, put
 from app.integrations.ports import FlightCriteria, HotelCriteria
 from app.integrations.service import IntegrationTools
+from app.integrations.travelpayouts import cached_fares
 from app.intent_preview import preview_intent_async
 from app.planning import (
     DemoPlanner,
@@ -1461,6 +1462,16 @@ def create_app(db_path: str | None = None, *, agent: Planner | None = None,
         async with slot:
             result = await preview_intent_async(body["query"], params)
         return JSONResponse(result)
+
+    @app.get("/api/v1/trips/{trip_id}/cached-fares", include_in_schema=False)
+    async def get_cached_fares(trip_id: str, request: Request):
+        with database.connect(write=False) as db:
+            owner = owner_for(db, request)
+            if owner is None:
+                raise ApiError(403, "SESSION_REQUIRED", "Требуется действующая сессия")
+            trip = get_object(db, "trip", trip_id, owner, report_trip_expiry=True)
+        schedule = trip["schedule"]
+        return JSONResponse(await cached_fares(trip.get("origin"), trip["destination"]["name"], schedule.get("start_date"), schedule.get("end_date")))
 
     for path, methods in specification()["paths"].items():
         for method, operation in methods.items():

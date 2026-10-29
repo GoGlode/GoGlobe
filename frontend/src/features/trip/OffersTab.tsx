@@ -2,7 +2,7 @@
 // Цены не суммируются и не сравниваются между разными basis; «Перейти к предложению» — только при реальной http(s)-ссылке.
 import { useEffect, useMemo, useState } from "react";
 import { getSearch, streamSearch } from "../../api/searches";
-import { ApiError, getFlights, getHotels, getTrip, startQuoteSearch } from "../../api/trips";
+import { ApiError, getCachedFares, getFlights, getHotels, getTrip, startQuoteSearch, type CachedFares } from "../../api/trips";
 import type { Component, FlightList, FlightOffer, HotelList, HotelOffer, Price, Trip, Warning } from "../../api/v03";
 import { isTerminal } from "../../api/v03Search";
 import { dateRange, plural } from "../../data/format";
@@ -24,6 +24,8 @@ export default function OffersTab({ kind, trip, onTrip }: { kind: Kind; trip: Tr
   const [quoteSearchId, setQuoteSearchId] = useState<string | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const state = s.status === "ready" ? s.data.state : null;
+  const [cached, setCached] = useState<CachedFares | null>(null);
+  useEffect(() => { if (kind === "flights") getCachedFares(trip.trip_id).then(setCached).catch(() => undefined); }, [kind, trip.trip_id]);
 
   useEffect(() => {
     if (!quoteSearchId) return;
@@ -85,6 +87,7 @@ export default function OffersTab({ kind, trip, onTrip }: { kind: Kind; trip: Tr
         ? `Для ${guests(l as HotelList)}, ${dateRange((l as HotelList).context!.stay.check_in, (l as HotelList).context!.stay.check_out)}`
         : `Для ${guestsF(l as FlightList)}, из ${(l as FlightList).context!.origin}, ${dateRange((l as FlightList).context!.flight_dates.outbound_date, (l as FlightList).context!.flight_dates.return_date)}`}</p>}
       {l.items.length > 0 && (kind === "hotels" ? <Hotels items={l.items as HotelOffer[]} /> : <Flights items={l.items as FlightOffer[]} />)}
+      {kind === "flights" && cached && <section className="card offer"><h3>Кэшированные цены</h3>{cached.items.map((f, i) => <p key={i}>{f.origin_iata} → {f.destination_iata} · {f.departure_date} · {f.price.amount} {f.price.currency}{f.airline ? ` · ${f.airline}` : ""}{f.transfers != null ? ` · пересадок: ${f.transfers}` : ""} <small className="muted">Кэшированная цена</small></p>)}{cached.status !== "ok" && <p className="muted">Кэшированных цен нет.</p>}</section>}
       {l.items.length > 0 && l.sources.length > 0 && <p className="muted atrip__fine">Источники: {l.sources.map((x) => `${x.name} (${when(x.checked_at) ?? "—"})`).join("; ")}{l.data_mode === "demo" ? " · демо" : ""}</p>}
       {!quoteSearchId && comp.state !== "processing" && comp.state !== "queued" && <QuoteForm kind={kind} trip={trip} onTrip={onTrip} onStarted={(searchId) => { setQuoteError(null); setTries(0); setQuoteSearchId(searchId); }} />}
     </div>
