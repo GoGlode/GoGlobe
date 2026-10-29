@@ -10,7 +10,7 @@ h1, h2, h3, p { margin: 0; }
 /* Каркас: мобильная колонка по центру (на десктопе — «телефон») */
 .app { max-width: var(--app-w); height: 100%; margin: 0 auto; position: relative; background: var(--grad-page); overflow: hidden;
   box-shadow: 0 0 60px rgba(16, 36, 72, 0.15); }
-.app__scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--nav-h) + 16px); scrollbar-width: none; }
+.app__scroll { height: 100%; overflow-y: auto; overflow-x: hidden; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 32px); scrollbar-width: none; }
 .app__scroll::-webkit-scrollbar { display: none; }
 .app--nonav .app__scroll { padding-bottom: 24px; }
 .page { padding: 0 var(--s-4); }

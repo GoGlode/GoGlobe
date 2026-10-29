@@ -46,6 +46,18 @@ def test_agent_planner_supports_istanbul_and_kazan():
         result = asyncio.run(AgentPlanner().plan(context(f"{city} на 2 дня")))
         assert result.destination["name"] == city
         assert result.duration_days == 2
+        titles = [item["title"] for day in result.itinerary["days"] for item in day["items"]]
+        assert len(titles) == 6
+        assert all("Знакомство с направлением" not in title for title in titles)
+        assert len(set(titles)) == len(titles)
+
+
+def test_istanbul_recommendations_are_concrete_and_suggested():
+    result = asyncio.run(AgentPlanner().plan(context("Стамбул на 2 дня")))
+    titles = [item["title"] for day in result.itinerary["days"] for item in day["items"]]
+    assert any("Айя-София" in title for title in titles)
+    assert any("Босфору" in title for title in titles)
+    assert all(2 <= len(day["items"]) <= 4 for day in result.itinerary["days"])
 
 
 def test_country_query_asks_for_city_before_duration():
